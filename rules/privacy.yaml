@@ -1,0 +1,61 @@
+# ABAP Guardian — privacy rule configuration.
+#
+# Sensitive identifiers are context-dependent: their mere presence is never a
+# violation. Rules fire only when identifiers reach an output/exfiltration
+# context (log, message, spool, file, external destination). All privacy
+# findings require human review.
+
+# Tables considered to hold personal data. Extend for customer namespaces.
+sensitiveTables:
+  - PA0002
+  - PA0006
+  - PA0009
+
+# Field names considered personal identifiers.
+sensitiveFields:
+  - PERNR
+  - NACHN
+  - VORNA
+  - GBDAT
+  - STRAS
+  - ORT01
+  - BANKN
+  - IBAN
+  - USRID
+  - EMAIL
+  - PHONE
+
+# RFC / HTTP destinations approved for transfers involving personal data.
+approvedDestinations: []
+
+# A SELECT reading more than this many sensitive fields is flagged.
+excessiveFieldThreshold: 3
+
+rules:
+  PRIV_PERSONAL_DATA_IN_LOG:
+    enabled: true
+    severity: HIGH
+  PRIV_PERSONAL_DATA_IN_MESSAGE:
+    enabled: true
+    severity: MEDIUM
+  PRIV_PERSONAL_DATA_IN_SPOOL:
+    enabled: true
+    severity: HIGH
+  PRIV_PERSONAL_DATA_IN_FILE_EXPORT:
+    enabled: true
+    severity: HIGH
+  PRIV_BROAD_HR_MASTER_DATA_SELECTION:
+    enabled: true
+    severity: HIGH
+  PRIV_UNMASKED_PERSONNEL_NUMBER:
+    enabled: true
+    severity: MEDIUM
+  PRIV_EXTERNAL_DATA_TRANSFER:
+    enabled: true
+    severity: HIGH
+  PRIV_EXCESSIVE_FIELD_SELECTION:
+    enabled: true
+    severity: MEDIUM
+  PRIV_DEBUG_OUTPUT_OF_PERSONAL_DATA:
+    enabled: true
+    severity: MEDIUM

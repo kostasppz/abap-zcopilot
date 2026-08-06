@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site>
+   <feature id="com.abapguardian.eclipse.feature" version="0.0.0">
+      <category name="com.abapguardian.category"/>
+   </feature>
+   <category-def name="com.abapguardian.category" label="ABAP Guardian">
+      <description>
+         AI-assisted static analysis and code review for SAP ABAP.
+      </description>
+   </category-def>
+</site>

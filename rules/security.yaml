@@ -1,0 +1,38 @@
+# ABAP Guardian — security rule configuration.
+rules:
+  SEC_HARDCODED_PASSWORD:
+    enabled: true
+    severity: CRITICAL
+  SEC_HARDCODED_TOKEN:
+    enabled: true
+    severity: CRITICAL
+  SEC_DYNAMIC_SQL_INPUT:
+    enabled: true
+    severity: HIGH
+  SEC_UNSAFE_CALL_TRANSACTION:
+    enabled: true
+    severity: HIGH
+  SEC_DYNAMIC_ABAP_GENERATION:
+    enabled: true
+    severity: CRITICAL
+  SEC_OS_COMMAND:
+    enabled: true
+    severity: CRITICAL
+  SEC_UNSAFE_DATASET_PATH:
+    enabled: true
+    severity: HIGH
+  SEC_CLIENT_SPECIFIED:
+    enabled: true
+    severity: MEDIUM
+  SEC_MISSING_SY_SUBRC_HANDLING:
+    enabled: true
+    severity: HIGH
+  SEC_INSECURE_HTTP:
+    enabled: true
+    severity: MEDIUM
+  # Heuristic indicator only. It NEVER asserts that an authorization check is
+  # missing — it flags places where a human should verify that checks exist.
+  SEC_AUTHORIZATION_CHECK_INDICATOR:
+    enabled: true
+    severity: INFO
+    confidenceThreshold: 0.0

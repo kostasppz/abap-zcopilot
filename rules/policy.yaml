@@ -1,0 +1,19 @@
+# ABAP Guardian — organisation policy configuration.
+#
+# This file is intended for team-specific conventions layered on top of the
+# built-in performance/security/privacy rules.
+
+namingConventions:
+  localVariablePrefix: "LV_"
+  localStructurePrefix: "LS_"
+  localTablePrefix: "LT_"
+  globalVariablePrefix: "GV_"
+  globalTablePrefix: "GT_"
+
+# Findings below this confidence are dropped globally unless a rule overrides
+# it with its own confidenceThreshold.
+defaultConfidenceThreshold: 0.0
+
+# Suppression policy: the pseudo-comment
+#   "#EC ABAP_GUARDIAN: RULE_ID reason="..."
+# is only honoured when a non-empty reason is provided.

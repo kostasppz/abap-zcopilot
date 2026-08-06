@@ -1,0 +1,79 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    name: Build release artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Build core + Eclipse modules
+        run: mvn -B clean verify -Peclipse
+
+      - name: Package update-site ZIP
+        run: |
+          mkdir -p dist
+          cp eclipse-updatesite/target/*.zip dist/abap-guardian-updatesite-${GITHUB_REF_NAME}.zip
+          cp analyzer-core/target/analyzer-core-*.jar dist/ || true
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum * > SHA256SUMS.txt
+
+      - name: Generate release notes
+        run: |
+          {
+            echo "## ABAP Guardian ${GITHUB_REF_NAME}"
+            echo
+            echo "### Changes"
+            git log "$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parents=0 HEAD)..HEAD" --pretty='- %s' || true
+            echo
+            echo "### Verification"
+            echo '```'
+            cat dist/SHA256SUMS.txt
+            echo '```'
+          } > release-notes.md
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release-notes.md
+          files: |
+            dist/*
+
+      - name: Prepare p2 site for GitHub Pages
+        run: |
+          mkdir -p site
+          cp -r eclipse-updatesite/target/repository/* site/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy-pages:
+    name: Publish p2 repository to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

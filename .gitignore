@@ -1,0 +1,11 @@
+target/
+bin/
+*.class
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+dist/
+.DS_Store

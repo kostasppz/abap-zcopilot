@@ -1,0 +1,47 @@
+# ABAP Guardian — performance rule configuration.
+# Every rule can be disabled, re-weighted or given a confidence threshold.
+defaultConfidenceThreshold: 0.0
+
+rules:
+  PERF_SELECT_IN_LOOP:
+    enabled: true
+    severity: HIGH
+  PERF_SELECT_STAR:
+    enabled: true
+    severity: MEDIUM
+  PERF_SELECT_ENDSELECT:
+    enabled: true
+    severity: MEDIUM
+  PERF_DATABASE_CHANGE_IN_LOOP:
+    enabled: true
+    severity: HIGH
+  PERF_RFC_OR_FUNCTION_IN_LOOP:
+    enabled: true
+    severity: HIGH
+  PERF_NESTED_STANDARD_TABLE_LOOP:
+    enabled: true
+    severity: MEDIUM
+  PERF_REPEATED_SORT_IN_LOOP:
+    enabled: true
+    severity: MEDIUM
+  PERF_COMMIT_IN_LOOP:
+    enabled: true
+    severity: HIGH
+  PERF_REPEATED_READ_TABLE:
+    enabled: true
+    severity: MEDIUM
+  PERF_UNBOUNDED_INTERNAL_TABLE:
+    enabled: true
+    severity: MEDIUM
+  PERF_DYNAMIC_SQL:
+    enabled: true
+    severity: MEDIUM
+  PERF_UNUSED_SELECTED_FIELDS:
+    enabled: true
+    severity: LOW
+  PERF_SELECT_WITHOUT_WHERE:
+    enabled: true
+    severity: MEDIUM
+  PERF_FOR_ALL_ENTRIES_WITHOUT_EMPTY_CHECK:
+    enabled: true
+    severity: HIGH

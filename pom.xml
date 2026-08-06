@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.abapguardian</groupId>
+  <artifactId>abap-guardian-parent</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <packaging>pom</packaging>
+
+  <name>ABAP Guardian</name>
+  <description>AI-assisted static analysis and code review for SAP ABAP development.</description>
+  <url>https://github.com/abap-guardian/abap-guardian</url>
+
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+    </license>
+  </licenses>
+
+  <properties>
+    <maven.compiler.release>21</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <junit.version>5.10.2</junit.version>
+    <jackson.version>2.17.1</jackson.version>
+    <snakeyaml.version>2.2</snakeyaml.version>
+    <tycho.version>4.0.8</tycho.version>
+    <!-- Target platform: configurable Eclipse release used by the plug-in build. -->
+    <eclipse.repo.url>https://download.eclipse.org/releases/2024-06</eclipse.repo.url>
+  </properties>
+
+  <modules>
+    <module>analyzer-core</module>
+  </modules>
+
+  <profiles>
+    <!--
+      The Eclipse plug-in, feature and p2 update site are built with Maven Tycho.
+      They are kept behind a profile because Tycho resolves the Eclipse target
+      platform from p2 repositories, which requires network access to
+      download.eclipse.org. Activate with: mvn clean verify -Peclipse
+    -->
+    <profile>
+      <id>eclipse</id>
+      <modules>
+        <module>eclipse-plugin</module>
+        <module>eclipse-feature</module>
+        <module>eclipse-updatesite</module>
+      </modules>
+      <repositories>
+        <repository>
+          <id>eclipse-release</id>
+          <url>${eclipse.repo.url}</url>
+          <layout>p2</layout>
+        </repository>
+      </repositories>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.eclipse.tycho</groupId>
+            <artifactId>tycho-maven-plugin</artifactId>
+            <version>${tycho.version}</version>
+            <extensions>true</extensions>
+          </plugin>
+          <plugin>
+            <groupId>org.eclipse.tycho</groupId>
+            <artifactId>target-platform-configuration</artifactId>
+            <version>${tycho.version}</version>
+            <configuration>
+              <executionEnvironment>JavaSE-21</executionEnvironment>
+              <environments>
+                <environment>
+                  <os>linux</os>
+                  <ws>gtk</ws>
+                  <arch>x86_64</arch>
+                </environment>
+                <environment>
+                  <os>win32</os>
+                  <ws>win32</ws>
+                  <arch>x86_64</arch>
+                </environment>
+                <environment>
+                  <os>macosx</os>
+                  <ws>cocoa</ws>
+                  <arch>x86_64</arch>
+                </environment>
+                <environment>
+                  <os>macosx</os>
+                  <ws>cocoa</ws>
+                  <arch>aarch64</arch>
+                </environment>
+              </environments>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>3.13.0</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>3.2.5</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+</project>

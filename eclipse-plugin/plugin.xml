@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+
+   <extension point="org.eclipse.ui.commands">
+      <category id="com.abapguardian.eclipse.commands.category" name="ABAP Guardian"/>
+      <command id="com.abapguardian.eclipse.commands.analyzeSelected"
+               categoryId="com.abapguardian.eclipse.commands.category"
+               name="Analyze Selected ABAP Object"/>
+      <command id="com.abapguardian.eclipse.commands.analyzeCurrent"
+               categoryId="com.abapguardian.eclipse.commands.category"
+               name="Analyze Current Editor"/>
+      <command id="com.abapguardian.eclipse.commands.openFindings"
+               categoryId="com.abapguardian.eclipse.commands.category"
+               name="Open Guardian Findings"/>
+      <command id="com.abapguardian.eclipse.commands.configure"
+               categoryId="com.abapguardian.eclipse.commands.category"
+               name="Configure ABAP Guardian"/>
+   </extension>
+
+   <extension point="org.eclipse.ui.handlers">
+      <handler commandId="com.abapguardian.eclipse.commands.analyzeSelected"
+               class="com.abapguardian.eclipse.handlers.AnalyzeSelectedHandler"/>
+      <handler commandId="com.abapguardian.eclipse.commands.analyzeCurrent"
+               class="com.abapguardian.eclipse.handlers.AnalyzeCurrentHandler"/>
+      <handler commandId="com.abapguardian.eclipse.commands.openFindings"
+               class="com.abapguardian.eclipse.handlers.OpenFindingsHandler"/>
+      <handler commandId="com.abapguardian.eclipse.commands.configure"
+               class="com.abapguardian.eclipse.handlers.ConfigureHandler"/>
+   </extension>
+
+   <extension point="org.eclipse.ui.menus">
+      <menuContribution locationURI="menu:org.eclipse.ui.main.menu?after=additions">
+         <menu id="com.abapguardian.eclipse.menu" label="ABAP &amp;Guardian">
+            <command commandId="com.abapguardian.eclipse.commands.analyzeCurrent" style="push"/>
+            <command commandId="com.abapguardian.eclipse.commands.analyzeSelected" style="push"/>
+            <separator name="sep1" visible="true"/>
+            <command commandId="com.abapguardian.eclipse.commands.openFindings" style="push"/>
+            <command commandId="com.abapguardian.eclipse.commands.configure" style="push"/>
+         </menu>
+      </menuContribution>
+   </extension>
+
+   <extension point="org.eclipse.ui.views">
+      <category id="com.abapguardian.eclipse.views.category" name="ABAP Guardian"/>
+      <view id="com.abapguardian.eclipse.views.findings"
+            category="com.abapguardian.eclipse.views.category"
+            class="com.abapguardian.eclipse.views.FindingsView"
+            name="Guardian Findings"
+            restorable="true"/>
+   </extension>
+
+   <extension point="org.eclipse.ui.preferencePages">
+      <page id="com.abapguardian.eclipse.preferences.page"
+            class="com.abapguardian.eclipse.preferences.GuardianPreferencePage"
+            name="ABAP Guardian"/>
+   </extension>
+
+   <extension point="org.eclipse.core.runtime.preferences">
+      <initializer class="com.abapguardian.eclipse.preferences.PreferenceInitializer"/>
+   </extension>
+
+   <extension point="org.eclipse.ui.editors.annotationTypes">
+      <type name="com.abapguardian.eclipse.annotation.finding"/>
+   </extension>
+
+   <extension point="org.eclipse.ui.editors.markerAnnotationSpecification">
+      <specification annotationType="com.abapguardian.eclipse.annotation.finding"
+                     label="ABAP Guardian Finding"
+                     colorPreferenceKey="abapGuardianFindingColor"
+                     colorPreferenceValue="255,140,0"
+                     overviewRulerPreferenceKey="abapGuardianFindingOverview"
+                     overviewRulerPreferenceValue="true"
+                     verticalRulerPreferenceKey="abapGuardianFindingVertical"
+                     verticalRulerPreferenceValue="true"
+                     textPreferenceKey="abapGuardianFindingText"
+                     textPreferenceValue="true"
+                     highlightPreferenceKey="abapGuardianFindingHighlight"
+                     highlightPreferenceValue="false"/>
+   </extension>
+
+</plugin>

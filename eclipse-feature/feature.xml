@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feature
+      id="com.abapguardian.eclipse.feature"
+      label="ABAP Guardian"
+      version="0.1.0.qualifier"
+      provider-name="ABAP Guardian Project">
+
+   <description>
+      AI-assisted static analysis and code review for SAP ABAP.
+      Deterministic performance, security and privacy rules with optional,
+      fully local AI enhancement via Ollama. No code leaves your machine
+      by default.
+   </description>
+
+   <copyright>
+      Copyright (c) ABAP Guardian contributors.
+   </copyright>
+
+   <license url="https://www.apache.org/licenses/LICENSE-2.0">
+      Licensed under the Apache License, Version 2.0.
+   </license>
+
+   <plugin id="com.abapguardian.eclipse.plugin" download-size="0" install-size="0" version="0.0.0"/>
+
+</feature>

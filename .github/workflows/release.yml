@@ -4,11 +4,26 @@ on:
   push:
     tags:
       - "v*"
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build (for example, v0.1.0)"
+        required: true
+        default: "v0.1.0"
+
+concurrency:
+  group: release-${{ github.event.release.tag_name || inputs.tag || github.ref_name }}
+  cancel-in-progress: true
 
 permissions:
   contents: write
   pages: write
   id-token: write
+
+env:
+  RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag || github.ref_name }}
 
 jobs:
   build:
@@ -16,6 +31,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -28,7 +46,7 @@ jobs:
       - name: Package update-site ZIP
         run: |
           mkdir -p dist
-          cp eclipse-updatesite/target/*.zip dist/abap-guardian-updatesite-${GITHUB_REF_NAME}.zip
+          cp eclipse-updatesite/target/*.zip dist/abap-guardian-updatesite-${RELEASE_TAG}.zip
           cp analyzer-core/target/analyzer-core-*.jar dist/ || true
 
       - name: Generate checksums
@@ -39,7 +57,7 @@ jobs:
       - name: Generate release notes
         run: |
           {
-            echo "## ABAP Guardian ${GITHUB_REF_NAME}"
+            echo "## ABAP Guardian ${RELEASE_TAG}"
             echo
             echo "### Changes"
             git log "$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parents=0 HEAD)..HEAD" --pretty='- %s' || true
@@ -53,6 +71,7 @@ jobs:
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
           body_path: release-notes.md
           files: |
             dist/*

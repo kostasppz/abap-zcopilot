@@ -12,7 +12,7 @@ _Last updated: 2026-08-06_
 | analyzer-core: 11 SEC rules | ✅ complete | Tested in `SecurityRulesTest`; authorization indicator is heuristic-only. |
 | analyzer-core: 9 PRIV rules | ✅ complete | Tested in `PrivacyRulesTest`; context-aware, human review required. |
 | analyzer-core: CLI | ✅ complete | stdin/file input, JSON out; used by the gateway (integration verified via gateway tests with mocked subprocess + manual run). |
-| ai-gateway: FastAPI service | ✅ complete | /health, /api/v1/models, /analyze, /explain, /suggest-fix; deterministic-first; limits; 19 pytest tests green. |
+| ai-gateway: FastAPI service | ✅ complete | /health, /api/v1/models, /analyze, /explain, /suggest-fix; deterministic-first; limits; 28 pytest tests green. |
 | ai-gateway: AI safety invariants | ✅ complete | AI cannot alter line numbers or invent findings (tested); schema validation; no-source-logging tests. |
 | ai-gateway: KnowledgeProvider (RAG seam) | ✅ complete | Protocol + NoOp + LocalVector placeholder + mock provider test. |
 | ai-gateway: redaction layer | ✅ complete | PII/credential masking, tested. |
@@ -27,7 +27,7 @@ _Last updated: 2026-08-06_
 ## Milestone check
 
 - `mvn clean verify` (default profile): **passing** — 69 JUnit tests.
-- `pytest` (ai-gateway): **passing** — 19 tests.
+- `pytest` (ai-gateway): **passing** — 28 tests.
 - ≥20 tested rules: **yes** (all 34 rules registered; 25+ rules have direct
   positive/negative tests; the rest are exercised through engine-level
   tests).

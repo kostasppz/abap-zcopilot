@@ -2,7 +2,7 @@
 
 Component status is only marked ✅ when its automated tests pass.
 
-_Last updated: 2026-08-06_
+_Last updated: 2026-08-07_
 
 | Component | Status | Notes |
 | --- | --- | --- |
@@ -12,10 +12,11 @@ _Last updated: 2026-08-06_
 | analyzer-core: 11 SEC rules | ✅ complete | Tested in `SecurityRulesTest`; authorization indicator is heuristic-only. |
 | analyzer-core: 9 PRIV rules | ✅ complete | Tested in `PrivacyRulesTest`; context-aware, human review required. |
 | analyzer-core: CLI | ✅ complete | stdin/file input, JSON out; used by the gateway (integration verified via gateway tests with mocked subprocess + manual run). |
-| ai-gateway: FastAPI service | ✅ complete | /health, /api/v1/models, /analyze, /explain, /suggest-fix; deterministic-first; limits; 28 pytest tests green. |
+| ai-gateway: FastAPI service | ✅ complete | Hosted OpenAI Responses or local Ollama; deterministic-first; limits; 30 pytest tests green. |
 | ai-gateway: AI safety invariants | ✅ complete | AI cannot alter line numbers or invent findings (tested); schema validation; no-source-logging tests. |
 | ai-gateway: KnowledgeProvider (RAG seam) | ✅ complete | Protocol + NoOp + LocalVector placeholder + mock provider test. |
 | ai-gateway: redaction layer | ✅ complete | PII/credential masking, tested. |
+| Hosted deployment | ✅ repository-ready | Docker packages Java 21 analyzer + Python gateway; Render requires a server-side `OPENAI_API_KEY`. Live deployment remains an operator step. |
 | rules/ YAML configs | ✅ complete | performance/security/privacy/policy. |
 | samples/ | ✅ complete | Canonical bad example (verified findings via engine test) + corrected version. |
 | eclipse-plugin | ✅ complete | Full source (commands, handlers, Job, findings view, annotations, compare dialog, preferences, secure storage, ADT adapter, public APIs only). Tycho build (`mvn clean verify -Peclipse`) verified 2026-08-06: BUILD SUCCESS, no compile/manifest errors. Headless p2 install into Eclipse Platform 4.32 verified via p2 director (feature resolves and installs); opening the Findings view in a running GUI workbench remains a manual check. |
@@ -27,7 +28,7 @@ _Last updated: 2026-08-06_
 ## Milestone check
 
 - `mvn clean verify` (default profile): **passing** — 69 JUnit tests.
-- `pytest` (ai-gateway): **passing** — 28 tests.
+- `pytest` (ai-gateway): **passing** — 30 tests, including hosted OpenAI mock integration and explicit opt-in enforcement.
 - ≥20 tested rules: **yes** (all 34 rules registered; 25+ rules have direct
   positive/negative tests; the rest are exercised through engine-level
   tests).

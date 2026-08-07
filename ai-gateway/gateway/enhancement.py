@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from pydantic import ValidationError
 
-from . import ollama_client
+from . import llm_client
 from .config import settings
 from .knowledge import KnowledgeProvider, get_default_provider
 from .redaction import redact
@@ -57,8 +57,8 @@ async def enhance_findings(
     if settings.redaction_enabled:
         prompt = redact(prompt)
     try:
-        raw = await ollama_client.generate_json(prompt, system=_SYSTEM)
-    except ollama_client.OllamaError:
+        raw = await llm_client.generate_json(prompt, system=_SYSTEM)
+    except llm_client.LlmError:
         return findings
 
     if not isinstance(raw, list):

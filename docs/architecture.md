@@ -1,17 +1,15 @@
 # Architecture
 
+```mermaid
+flowchart LR
+    E["Eclipse plug-in"] -->|"HTTPS: ABAP source"| G["Hosted Guardian gateway"]
+    G -->|"stdin"| A["Java analyzer-core"]
+    G -->|"bounded redacted prompt"| L["Hosted LLM"]
+    G -->|"findings JSON"| E
 ```
-┌─────────────────┐     HTTP (localhost)     ┌──────────────────┐
-│ Eclipse plug-in │ ───────────────────────► │   AI gateway     │
-│ (ADT adapter)   │ ◄─────────────────────── │  (FastAPI, py)   │
-└─────────────────┘        findings JSON     └───────┬──────────┘
-                                              stdin  │   │ HTTP (localhost)
-                                                     ▼   ▼
-                                        ┌──────────────┐ ┌─────────┐
-                                        │ analyzer-core│ │ Ollama  │
-                                        │  (Java CLI)  │ │ (local) │
-                                        └──────────────┘ └─────────┘
-```
+
+`Dockerfile` packages the gateway and Java analyzer into one service. Local
+development may select Ollama instead of the hosted LLM.
 
 ## analyzer-core (Java 21, zero Eclipse deps)
 
@@ -50,9 +48,10 @@ Invariants:
 3. No source is stored or logged; tests prove it.
 4. Limits are configurable via env: `MAX_SOURCE_LENGTH`, `AI_TIMEOUT_SECONDS`,
    `REQUEST_TIMEOUT_SECONDS`, `MAX_FINDINGS`, `MAX_TOKENS`.
-5. External providers are off by default (`ALLOW_EXTERNAL_PROVIDERS=false`);
-   the redaction layer (`gateway/redaction.py`) masks likely PII/credentials
-   in prompts.
+5. External providers remain off unless both `LLM_PROVIDER=openai` and
+   `ALLOW_EXTERNAL_PROVIDERS=true` are configured. Hosted Responses API calls
+   use a server-side key, set `store: false`, and receive prompts only after
+   `gateway/redaction.py` masks likely PII/credentials.
 6. `KnowledgeProvider` protocol (`gateway/knowledge.py`) is the RAG seam:
    `NoOpKnowledgeProvider` is the default; `LocalVectorKnowledgeProvider` is
    a local vector store over a JSON index of Ollama-embedded rule docs and
@@ -76,8 +75,8 @@ Invariants:
 - Suggested fixes are previewed in a compare dialog and applied only after
   explicit confirmation, as one document replace (single undo). The plug-in
   never saves or activates objects.
-- Secure storage abstraction (`SecureCredentialStore`) for any future
-  credentials; the default local gateway needs none.
+- The default proof-of-concept service URL is HTTPS and can be replaced with
+  an organization-owned deployment. Provider credentials stay on the server.
 
 ## Wire format
 

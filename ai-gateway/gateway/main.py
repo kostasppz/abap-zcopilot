@@ -13,7 +13,7 @@ import logging
 
 from fastapi import FastAPI, HTTPException
 
-from . import __version__, analyzer, ollama_client
+from . import __version__, analyzer, llm_client
 from .config import settings
 from .enhancement import enhance_findings
 from .redaction import redact
@@ -42,12 +42,14 @@ app = FastAPI(
 
 @app.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
-    ollama_ok = await ollama_client.is_available()
+    llm_ok = await llm_client.is_available()
     analyzer_ok = analyzer.analyzer_available()
     status = "ok" if analyzer_ok else "degraded"
     return HealthResponse(
         status=status,
-        ollamaAvailable=ollama_ok,
+        llmAvailable=llm_ok,
+        llmProvider=llm_client.provider_name(),
+        ollamaAvailable=llm_ok and llm_client.provider_name() == "ollama",
         analyzerAvailable=analyzer_ok,
         version=__version__,
     )
@@ -55,11 +57,8 @@ async def health() -> HealthResponse:
 
 @app.get("/api/v1/models", response_model=ModelsResponse)
 async def models() -> ModelsResponse:
-    try:
-        names = await ollama_client.list_models()
-    except Exception:  # noqa: BLE001 - degrade gracefully, never leak details
-        names = []
-    return ModelsResponse(models=names, default=settings.ollama_model)
+    names = await llm_client.list_models()
+    return ModelsResponse(models=names, default=llm_client.model_name())
 
 
 @app.post("/api/v1/analyze", response_model=AnalyzeResponse)
@@ -81,7 +80,7 @@ async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
     findings = findings[: settings.max_findings]
 
     ai_enhanced = False
-    if request.useAi and findings and await ollama_client.is_available():
+    if request.useAi and findings and await llm_client.is_available():
         # AI sees at most a bounded snippet, never persists anything, and
         # cannot alter positions (enforced in enhance_findings).
         snippet = request.source[:4000]
@@ -94,7 +93,7 @@ async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
         findings=findings,
         suppressedFindings=suppressed,
         aiEnhanced=ai_enhanced,
-        model=settings.ollama_model if ai_enhanced else None,
+        model=llm_client.model_name() if ai_enhanced else None,
     )
 
 
@@ -110,10 +109,10 @@ async def explain(request: ExplainRequest) -> ExplainResponse:
     if settings.redaction_enabled:
         prompt = redact(prompt)
     try:
-        text = await ollama_client.generate_text(prompt)
-    except ollama_client.OllamaError as exc:
+        text = await llm_client.generate_text(prompt)
+    except llm_client.LlmError as exc:
         raise HTTPException(status_code=503, detail="AI model unavailable") from exc
-    return ExplainResponse(explanation=text, model=settings.ollama_model)
+    return ExplainResponse(explanation=text, model=llm_client.model_name())
 
 
 @app.post("/api/v1/suggest-fix", response_model=SuggestFixResponse)
@@ -129,14 +128,14 @@ async def suggest_fix(request: SuggestFixRequest) -> SuggestFixResponse:
     if settings.redaction_enabled:
         prompt = redact(prompt)
     try:
-        raw = await ollama_client.generate_json(prompt)
-    except ollama_client.OllamaError as exc:
+        raw = await llm_client.generate_json(prompt)
+    except llm_client.LlmError as exc:
         raise HTTPException(status_code=503, detail="AI model unavailable") from exc
     if not isinstance(raw, dict) or "suggestedCode" not in raw:
         raise HTTPException(status_code=502, detail="AI reply failed schema validation")
     return SuggestFixResponse(
         suggestedCode=str(raw.get("suggestedCode", "")),
         caveats=str(raw.get("caveats", "")),
-        model=settings.ollama_model,
+        model=llm_client.model_name(),
         requiresHumanReview=True,
     )

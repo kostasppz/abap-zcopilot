@@ -29,6 +29,12 @@
                class="com.abapguardian.eclipse.handlers.ConfigureHandler"/>
    </extension>
 
+   <extension point="org.eclipse.ui.bindings">
+      <key commandId="com.abapguardian.eclipse.commands.analyzeCurrent"
+           schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
+           sequence="M1+M3+G"/>
+   </extension>
+
    <extension point="org.eclipse.ui.menus">
       <menuContribution locationURI="menu:org.eclipse.ui.main.menu?after=additions">
          <menu id="com.abapguardian.eclipse.menu" label="ABAP &amp;Guardian">

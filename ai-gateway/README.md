@@ -20,11 +20,17 @@ docker run --rm -p 8000:8000 \
 The API key remains on the server. OpenAI requests set `store: false` and
 receive only the bounded prompt after Guardian redaction.
 
+The container also bundles curated Markdown/YAML from `docs/` and `rules/`.
+`POST /api/v1/chat` performs dependency-free lexical retrieval over those
+files and includes only the most relevant bounded passages in the prompt.
+Knowledge retrieval happens inside the Guardian container; it does not require
+or upload documentation to an external vector database.
+
 ## Quick start
 
 ```bash
 pip install -e .
-export ANALYZER_JAR=../analyzer-core/target/analyzer-core-0.2.0-SNAPSHOT.jar
+export ANALYZER_JAR=../analyzer-core/target/analyzer-core-0.3.0-SNAPSHOT.jar
 uvicorn gateway.main:app --port 8000
 ```
 
@@ -36,6 +42,8 @@ uvicorn gateway.main:app --port 8000
   never positions or the finding set.
 - External AI providers are disabled by default; a redaction layer masks
   likely personal data and credentials in prompts.
+- Chat and finding enhancement send at most 4000 characters of redacted code
+  context onward to an external provider.
 
 ## Tests
 

@@ -22,3 +22,5 @@ services:
         value: "200"
       - key: MAX_TOKENS
         value: "2048"
+      - key: MAX_CHAT_CONTEXT_LENGTH
+        value: "4000"

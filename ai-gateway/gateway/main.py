@@ -16,10 +16,13 @@ from fastapi import FastAPI, HTTPException
 from . import __version__, analyzer, llm_client
 from .config import settings
 from .enhancement import enhance_findings
+from .knowledge import get_default_provider
 from .redaction import redact
 from .schemas import (
     AnalyzeRequest,
     AnalyzeResponse,
+    ChatRequest,
+    ChatResponse,
     ExplainRequest,
     ExplainResponse,
     Finding,
@@ -32,6 +35,14 @@ from .schemas import (
 # Deliberately quiet: uvicorn access logs would contain only paths, never
 # bodies, but we also avoid app-level logging of any request content.
 logger = logging.getLogger("abap_guardian.gateway")
+
+_CHAT_SYSTEM = (
+    "You are ABAP Guardian Copilot, a specialist assistant for SAP ABAP code review. "
+    "Answer only questions related to ABAP, the active code, static-analysis findings, "
+    "performance, security, privacy and the supplied project knowledge. Distinguish "
+    "facts from suggestions. Never claim that suggested code is safe without human "
+    "review. Do not invent repository rules or source locations."
+)
 
 app = FastAPI(
     title="ABAP Guardian AI Gateway",
@@ -59,6 +70,47 @@ async def health() -> HealthResponse:
 async def models() -> ModelsResponse:
     names = await llm_client.list_models()
     return ModelsResponse(models=names, default=llm_client.model_name())
+
+
+@app.post("/api/v1/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest) -> ChatResponse:
+    if not await llm_client.is_available():
+        raise HTTPException(status_code=503, detail="AI model unavailable")
+    source = request.source[: settings.max_chat_context_length]
+    query = " ".join(part for part in (request.question, request.selection, source[:2000]) if part)
+    snippets = get_default_provider().retrieve(query, limit=4)
+
+    prompt_parts = [
+        f"ABAP object: {request.objectName} ({request.objectType})",
+        f"Developer question:\n{request.question}",
+    ]
+    if request.history:
+        transcript = "\n".join(
+            f"{message.role}: {message.content}" for message in request.history[-8:]
+        )
+        prompt_parts.append("Recent conversation:\n" + transcript)
+    if snippets:
+        prompt_parts.append(
+            "Relevant repository knowledge:\n"
+            + "\n\n".join(f"[{item.source}]\n{item.content}" for item in snippets)
+        )
+    if request.selection:
+        prompt_parts.append("Selected ABAP code:\n" + request.selection)
+    elif source:
+        prompt_parts.append("Active ABAP source:\n" + source)
+    prompt = "\n\n".join(prompt_parts)
+    if settings.redaction_enabled:
+        prompt = redact(prompt)
+    try:
+        answer = await llm_client.generate_text(prompt, system=_CHAT_SYSTEM)
+    except llm_client.LlmError as exc:
+        raise HTTPException(status_code=503, detail="AI model unavailable") from exc
+    return ChatResponse(
+        answer=answer,
+        model=llm_client.model_name(),
+        knowledgeReferences=list(dict.fromkeys(item.source for item in snippets)),
+        contextIncluded=bool(request.selection or source),
+    )
 
 
 @app.post("/api/v1/analyze", response_model=AnalyzeResponse)

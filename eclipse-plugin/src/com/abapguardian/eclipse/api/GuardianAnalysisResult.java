@@ -27,4 +27,11 @@ public final class GuardianAnalysisResult {
     public List<GuardianFinding> getFindings() { return findings; }
     public List<GuardianFinding> getSuppressedFindings() { return suppressedFindings; }
     public boolean isAiEnhanced() { return aiEnhanced; }
+
+    public GuardianAnalysisResult withLineOffset(int offset) {
+        return new GuardianAnalysisResult(objectName, objectType,
+                findings.stream().map(finding -> finding.withLineOffset(offset)).toList(),
+                suppressedFindings.stream().map(finding -> finding.withLineOffset(offset)).toList(),
+                aiEnhanced);
+    }
 }

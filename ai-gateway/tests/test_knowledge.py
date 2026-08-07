@@ -11,6 +11,7 @@ from httpx import Response
 
 from gateway.config import settings
 from gateway.knowledge import (
+    BundledKnowledgeProvider,
     LocalVectorKnowledgeProvider,
     NoOpKnowledgeProvider,
     get_default_provider,
@@ -95,7 +96,8 @@ def test_corrupt_index_returns_empty(tmp_path):
 
 
 def test_default_provider_is_noop_without_index():
-    with patch.object(settings, "knowledge_index_path", ""):
+    with patch.object(settings, "knowledge_index_path", ""), \
+         patch.object(settings, "bundled_knowledge_path", ""):
         assert isinstance(get_default_provider(), NoOpKnowledgeProvider)
 
 
@@ -105,6 +107,15 @@ def test_default_provider_uses_local_vector_when_index_exists(tmp_path):
         provider = get_default_provider()
     assert isinstance(provider, LocalVectorKnowledgeProvider)
     assert provider.index_path == path
+
+
+def test_default_provider_uses_bundled_docs_without_vector_index(tmp_path):
+    (tmp_path / "rules.md").write_text("PERF_SELECT_IN_LOOP avoid selects in loops")
+    with patch.object(settings, "knowledge_index_path", ""), \
+         patch.object(settings, "bundled_knowledge_path", str(tmp_path)):
+        provider = get_default_provider()
+    assert isinstance(provider, BundledKnowledgeProvider)
+    assert provider.retrieve("PERF_SELECT_IN_LOOP")
 
 
 @respx.mock
@@ -155,7 +166,8 @@ def test_enhancement_still_works_without_knowledge(sample_finding):
         )
     )
     finding = Finding.model_validate(sample_finding)
-    with patch.object(settings, "knowledge_index_path", ""):
+    with patch.object(settings, "knowledge_index_path", ""), \
+         patch.object(settings, "bundled_knowledge_path", ""):
         result = asyncio.run(enhance_findings([finding], "LOOP AT lt."))
     assert result[0].explanation == "Better explanation."
     assert result[0].startLine == finding.startLine

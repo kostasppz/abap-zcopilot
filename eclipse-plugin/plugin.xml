@@ -16,6 +16,21 @@
       <command id="com.abapguardian.eclipse.commands.configure"
                categoryId="com.abapguardian.eclipse.commands.category"
                name="Configure ABAP Guardian"/>
+      <command id="com.abapguardian.eclipse.commands.openCopilot"
+               categoryId="com.abapguardian.eclipse.commands.category"
+               name="Open ABAP Guardian Copilot"/>
+      <command id="com.abapguardian.eclipse.commands.askGuardian"
+               categoryId="com.abapguardian.eclipse.commands.category"
+               name="Ask ABAP Guardian"/>
+      <command id="com.abapguardian.eclipse.commands.explainSelection"
+               categoryId="com.abapguardian.eclipse.commands.category"
+               name="Explain Selection with Guardian"/>
+      <command id="com.abapguardian.eclipse.commands.suggestCorrection"
+               categoryId="com.abapguardian.eclipse.commands.category"
+               name="Suggest Correction with Guardian"/>
+      <command id="com.abapguardian.eclipse.commands.analyzeTextSelection"
+               categoryId="com.abapguardian.eclipse.commands.category"
+               name="Analyze Selected ABAP Code"/>
    </extension>
 
    <extension point="org.eclipse.ui.handlers">
@@ -27,22 +42,54 @@
                class="com.abapguardian.eclipse.handlers.OpenFindingsHandler"/>
       <handler commandId="com.abapguardian.eclipse.commands.configure"
                class="com.abapguardian.eclipse.handlers.ConfigureHandler"/>
+      <handler commandId="com.abapguardian.eclipse.commands.openCopilot"
+               class="com.abapguardian.eclipse.handlers.OpenCopilotHandler"/>
+      <handler commandId="com.abapguardian.eclipse.commands.askGuardian"
+               class="com.abapguardian.eclipse.handlers.AskGuardianHandler"/>
+      <handler commandId="com.abapguardian.eclipse.commands.explainSelection"
+               class="com.abapguardian.eclipse.handlers.ExplainSelectionHandler"/>
+      <handler commandId="com.abapguardian.eclipse.commands.suggestCorrection"
+               class="com.abapguardian.eclipse.handlers.SuggestCorrectionHandler"/>
+      <handler commandId="com.abapguardian.eclipse.commands.analyzeTextSelection"
+               class="com.abapguardian.eclipse.handlers.AnalyzeTextSelectionHandler"/>
    </extension>
 
    <extension point="org.eclipse.ui.bindings">
       <key commandId="com.abapguardian.eclipse.commands.analyzeCurrent"
            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
            sequence="M1+M3+G"/>
+      <key commandId="com.abapguardian.eclipse.commands.openCopilot"
+           schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
+           sequence="M1+M3+C"/>
    </extension>
 
    <extension point="org.eclipse.ui.menus">
       <menuContribution locationURI="menu:org.eclipse.ui.main.menu?after=additions">
          <menu id="com.abapguardian.eclipse.menu" label="ABAP &amp;Guardian">
+            <command commandId="com.abapguardian.eclipse.commands.openCopilot" style="push"/>
+            <command commandId="com.abapguardian.eclipse.commands.askGuardian" style="push"/>
+            <separator name="copilotSep" visible="true"/>
             <command commandId="com.abapguardian.eclipse.commands.analyzeCurrent" style="push"/>
+            <command commandId="com.abapguardian.eclipse.commands.analyzeTextSelection" style="push"/>
             <command commandId="com.abapguardian.eclipse.commands.analyzeSelected" style="push"/>
             <separator name="sep1" visible="true"/>
             <command commandId="com.abapguardian.eclipse.commands.openFindings" style="push"/>
             <command commandId="com.abapguardian.eclipse.commands.configure" style="push"/>
+         </menu>
+      </menuContribution>
+      <menuContribution locationURI="popup:org.eclipse.ui.popup.any?after=additions">
+         <menu id="com.abapguardian.eclipse.contextMenu" label="ABAP Guardian">
+            <command commandId="com.abapguardian.eclipse.commands.askGuardian"
+                     label="Ask ABAP Guardian…" style="push"/>
+            <command commandId="com.abapguardian.eclipse.commands.analyzeTextSelection"
+                     label="Analyze Selection" style="push"/>
+            <command commandId="com.abapguardian.eclipse.commands.analyzeCurrent"
+                     label="Analyze Current Editor" style="push"/>
+            <separator name="quickActions" visible="true"/>
+            <command commandId="com.abapguardian.eclipse.commands.explainSelection"
+                     label="Explain Selection" style="push"/>
+            <command commandId="com.abapguardian.eclipse.commands.suggestCorrection"
+                     label="Suggest Correction" style="push"/>
          </menu>
       </menuContribution>
    </extension>
@@ -54,6 +101,35 @@
             class="com.abapguardian.eclipse.views.FindingsView"
             name="Guardian Findings"
             restorable="true"/>
+      <view id="com.abapguardian.eclipse.views.copilot"
+            category="com.abapguardian.eclipse.views.category"
+            class="com.abapguardian.eclipse.views.CopilotView"
+            name="ABAP Guardian Copilot"
+            restorable="true"/>
+      <view id="com.abapguardian.eclipse.views.welcome"
+            category="com.abapguardian.eclipse.views.category"
+            class="com.abapguardian.eclipse.views.WelcomeView"
+            name="Welcome to ABAP Guardian"
+            restorable="true"/>
+   </extension>
+
+   <extension point="org.eclipse.ui.perspectiveExtensions">
+      <perspectiveExtension targetID="*">
+         <viewShortcut id="com.abapguardian.eclipse.views.copilot"/>
+         <viewShortcut id="com.abapguardian.eclipse.views.findings"/>
+         <view id="com.abapguardian.eclipse.views.copilot"
+               relative="org.eclipse.ui.views.ProblemView"
+               relationship="stack"
+               visible="true"/>
+         <view id="com.abapguardian.eclipse.views.findings"
+               relative="org.eclipse.ui.views.ProblemView"
+               relationship="stack"
+               visible="false"/>
+      </perspectiveExtension>
+   </extension>
+
+   <extension point="org.eclipse.ui.startup">
+      <startup class="com.abapguardian.eclipse.lifecycle.GuardianStartup"/>
    </extension>
 
    <extension point="org.eclipse.ui.preferencePages">

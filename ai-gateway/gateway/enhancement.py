@@ -23,7 +23,9 @@ _SYSTEM = (
     "deterministic static analyzer. Improve the explanation, recommendation "
     "and suggested code. Reply with a JSON array of objects with keys "
     "ruleId, explanation, recommendation, suggestedCode. Never invent line "
-    "numbers, new findings, or claim certainty the analyzer did not have."
+    "numbers, new findings, or claim certainty the analyzer did not have. "
+    "When a minimal behavior-preserving alternative can be expressed safely, "
+    "include it in suggestedCode; otherwise use null and explain the manual steps."
 )
 
 

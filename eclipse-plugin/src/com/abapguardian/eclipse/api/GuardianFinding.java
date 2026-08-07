@@ -61,4 +61,11 @@ public final class GuardianFinding {
     public String getSuggestedCode() { return suggestedCode; }
     public boolean isRequiresHumanReview() { return requiresHumanReview; }
     public List<String> getDocumentationReferences() { return documentationReferences; }
+
+    public GuardianFinding withLineOffset(int offset) {
+        return new GuardianFinding(ruleId, category, severity, confidence, title,
+                explanation, evidence, startLine + offset, startColumn,
+                endLine + offset, endColumn, recommendation, suggestedCode,
+                requiresHumanReview, documentationReferences);
+    }
 }

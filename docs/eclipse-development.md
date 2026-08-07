@@ -56,10 +56,23 @@ ADT installation with PDE). Launch a runtime workbench with the plug-in via
   binding can be changed under *Window → Preferences → General → Keys* by
   searching for **Analyze Current Editor**.
 - **Guardian Findings view** — columns Severity | Category | Rule | Line |
-  Confidence | Title; double-click navigates to the finding.
+  Confidence | Title | Description | Suggestion; double-click navigates to the
+  finding and its context menu opens the compare-based fix review.
+- **ABAP Guardian Copilot view** — stacked next to Problems in every
+  perspective. Chat can use the active editor or current text selection as
+  context; `Ctrl+Alt+C` opens it.
+- **Editor context menu** — Ask Guardian, Analyze Selection, Analyze Current
+  Editor, Explain Selection and Suggest Correction.
+- **Live analysis** — `LiveAnalysisController` attaches only to the active
+  public `ITextEditor` document, debounces changes, cancels stale jobs and can
+  analyze on save. Both triggers are opt-in; automatic AI is separately opt-in.
 - **Editor annotations** — orange markers per finding
   (`FindingAnnotations`).
 - **Compare dialog** — `SuggestedFixDialog` shows current vs suggested code
-  before any change.
+  before any change and requires confirmation; the edit stays unsaved and is
+  one undo operation. Copilot suggestions enter this path only when the reply
+  contains a fenced ABAP block and the original editor selection is unchanged.
+- **Welcome/What's New** — `GuardianStartup` opens `WelcomeView` once per
+  installed bundle version and performs a background service health check.
 - **Preference page** — hosted service URL, timeout, online-AI toggle,
-  minimum severity and connection test.
+  minimum severity, live delay, on-save/live switches and connection test.

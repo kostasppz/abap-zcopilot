@@ -7,7 +7,7 @@ Set `ANALYZER_JAR` to the built jar and ensure `java` is on PATH:
 
 ```bash
 mvn -pl analyzer-core clean package
-export ANALYZER_JAR=$PWD/analyzer-core/target/analyzer-core-0.2.0-SNAPSHOT.jar
+export ANALYZER_JAR=$PWD/analyzer-core/target/analyzer-core-0.3.0-SNAPSHOT.jar
 ```
 
 **`/analyze` returns 503**
@@ -60,6 +60,27 @@ Connection*. Free proof-of-concept instances may need time to wake up.
 
 **No findings view opens**
 *Window → Show View → Other… → ABAP Guardian → Guardian Findings.*
+
+**Copilot is not visible next to Problems**
+Use *ABAP Guardian → Open ABAP Guardian Copilot* or press `Ctrl+Alt+C`.
+Perspective extensions determine the initial placement; an existing heavily
+customized perspective can be restored with *Window → Perspective → Reset
+Perspective…* and the view can always be dragged next to Problems manually.
+
+**Live findings do not run while typing**
+They are disabled by default. Open *Window → Preferences → ABAP Guardian*,
+enable live analysis and choose a delay of at least 1000 ms. Analyze-on-save
+and automatic online-AI enhancement are separate switches.
+
+**A finding is listed but not underlined**
+Re-run analysis after editing. Stale results are intentionally discarded; an
+annotation is never guessed when its deterministic line range is invalid.
+
+**Review Suggested Fix says no suggested code is available**
+The deterministic rule supplied a recommendation but no replacement block,
+and AI enhancement did not produce valid suggested code. Use **Suggest
+Correction** in Copilot and review the answer manually; Guardian never applies
+chat output automatically.
 
 **Tycho build fails resolving the target platform**
 The build needs network access to `download.eclipse.org`. Behind a proxy,

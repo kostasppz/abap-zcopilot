@@ -45,6 +45,17 @@ public class GuardianPreferencePage extends FieldEditorPreferencePage implements
                 "Request &timeout (seconds):", getFieldEditorParent(), 4));
         addField(new BooleanFieldEditor(GuardianPreferences.KEY_USE_AI,
                 "Use &online AI enhancement", getFieldEditorParent()));
+        addField(new BooleanFieldEditor(GuardianPreferences.KEY_LIVE_ANALYSIS,
+                "Enable live analysis after a typing pause", getFieldEditorParent()));
+        IntegerFieldEditor delay = new IntegerFieldEditor(GuardianPreferences.KEY_LIVE_DELAY_MS,
+                "Live analysis delay (milliseconds):", getFieldEditorParent(), 6);
+        delay.setValidRange(1000, 60000);
+        addField(delay);
+        addField(new BooleanFieldEditor(GuardianPreferences.KEY_ANALYZE_ON_SAVE,
+                "Analyze automatically when the editor is saved", getFieldEditorParent()));
+        addField(new BooleanFieldEditor(GuardianPreferences.KEY_LIVE_USE_AI,
+                "Use online AI during automatic analysis (may consume API quota)",
+                getFieldEditorParent()));
         addField(new ComboFieldEditor(GuardianPreferences.KEY_MIN_SEVERITY,
                 "Minimum &severity to show:",
                 new String[][] {

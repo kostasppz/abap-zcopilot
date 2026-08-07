@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 MARKER = "ZZ_SECRET_SOURCE_MARKER_lv_password"
 ABAP = f"DATA {MARKER} TYPE string.\nWRITE {MARKER}.\n"
@@ -14,6 +14,18 @@ def test_source_never_logged(client, deterministic_result, caplog):
     with patch("gateway.analyzer.run_deterministic_analysis", return_value=deterministic_result), \
          patch("gateway.llm_client.is_available", return_value=False):
         resp = client.post("/api/v1/analyze", json={"source": ABAP})
+    assert resp.status_code == 200
+    assert MARKER not in caplog.text
+
+
+def test_chat_context_never_logged(client, caplog):
+    caplog.set_level(logging.DEBUG)
+    with patch("gateway.llm_client.is_available", new=AsyncMock(return_value=True)), \
+         patch("gateway.llm_client.generate_text", new=AsyncMock(return_value="Safe answer")):
+        resp = client.post(
+            "/api/v1/chat",
+            json={"question": "Explain this", "source": ABAP, "objectName": "ZTEST"},
+        )
     assert resp.status_code == 200
     assert MARKER not in caplog.text
 

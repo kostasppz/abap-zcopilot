@@ -61,6 +61,9 @@ class Settings:
     knowledge_index_path: str = field(
         default_factory=lambda: os.environ.get("KNOWLEDGE_INDEX_PATH", "")
     )
+    bundled_knowledge_path: str = field(
+        default_factory=lambda: os.environ.get("BUNDLED_KNOWLEDGE_PATH", "")
+    )
     embedding_model: str = field(
         default_factory=lambda: os.environ.get("EMBEDDING_MODEL", "nomic-embed-text")
     )
@@ -78,6 +81,9 @@ class Settings:
     ai_timeout_seconds: int = field(default_factory=lambda: _int_env("AI_TIMEOUT_SECONDS", 60))
     max_findings: int = field(default_factory=lambda: _int_env("MAX_FINDINGS", 200))
     max_tokens: int = field(default_factory=lambda: _int_env("MAX_TOKENS", 2048))
+    max_chat_context_length: int = field(
+        default_factory=lambda: _int_env("MAX_CHAT_CONTEXT_LENGTH", 4000)
+    )
 
 
 settings = Settings()

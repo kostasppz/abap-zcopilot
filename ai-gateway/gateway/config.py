@@ -20,12 +20,31 @@ def _int_env(name: str, default: int) -> int:
 
 @dataclass
 class Settings:
+    # AI provider. "ollama" keeps development fully local; "openai" uses
+    # the hosted Responses API and additionally requires the explicit
+    # ALLOW_EXTERNAL_PROVIDERS opt-in below.
+    llm_provider: str = field(
+        default_factory=lambda: os.environ.get("LLM_PROVIDER", "ollama").lower()
+    )
+
     # Ollama (local by default).
     ollama_base_url: str = field(
         default_factory=lambda: os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
     )
     ollama_model: str = field(
         default_factory=lambda: os.environ.get("OLLAMA_MODEL", "gemma4:e4b")
+    )
+
+    # Hosted OpenAI Responses API. The API key is server-side only and is
+    # never sent to or stored by the Eclipse plug-in.
+    openai_base_url: str = field(
+        default_factory=lambda: os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
+    )
+    openai_api_key: str = field(
+        default_factory=lambda: os.environ.get("OPENAI_API_KEY", "")
+    )
+    openai_model: str = field(
+        default_factory=lambda: os.environ.get("OPENAI_MODEL", "gpt-5.6")
     )
 
     # External providers are OFF by default; enabling requires an explicit

@@ -65,16 +65,49 @@ public final class SuggestedFixDialog {
             return false;
         }
 
+        return previewAndApply(shell, document, offset, length, original,
+                finding.getSuggestedCode(), finding.getRuleId());
+    }
+
+    /** Reviews a Copilot correction for the current selection before applying it. */
+    public static boolean proposeSelectionFix(Shell shell, IEditorPart editor,
+                                              String originalSelection,
+                                              String suggestedCode) {
+        IDocument document = AdtEditorAdapter.getDocument(editor).orElse(null);
+        int offset = AdtEditorAdapter.getSelectionOffset(editor);
+        int length = AdtEditorAdapter.getSelectionLength(editor);
+        if (document == null || offset < 0 || length <= 0 || suggestedCode == null
+                || suggestedCode.isBlank()) {
+            MessageDialog.openInformation(shell, "ABAP Guardian",
+                    "Select the original ABAP code before reviewing this suggestion.");
+            return false;
+        }
+        try {
+            if (!document.get(offset, length).equals(originalSelection)) {
+                MessageDialog.openInformation(shell, "ABAP Guardian",
+                        "The selection changed. Select the original code and request a new suggestion.");
+                return false;
+            }
+        } catch (BadLocationException exception) {
+            return false;
+        }
+        return previewAndApply(shell, document, offset, length, originalSelection,
+                suggestedCode, "Copilot selection");
+    }
+
+    private static boolean previewAndApply(Shell shell, IDocument document,
+                                           int offset, int length, String original,
+                                           String suggestedCode, String label) {
         CompareConfiguration config = new CompareConfiguration();
         config.setLeftLabel("Current code");
-        config.setRightLabel("Suggested code (" + finding.getRuleId() + ")");
+        config.setRightLabel("Suggested code (" + label + ")");
         config.setLeftEditable(false);
         config.setRightEditable(false);
         CompareEditorInput input = new CompareEditorInput(config) {
             @Override
             protected Object prepareInput(IProgressMonitor monitor) {
                 return new DiffNode(new TextElement("current.abap", original),
-                        new TextElement("suggested.abap", finding.getSuggestedCode()));
+                        new TextElement("suggested.abap", suggestedCode));
             }
         };
         input.setTitle("ABAP Guardian — Review Suggested Fix");
@@ -87,7 +120,7 @@ public final class SuggestedFixDialog {
         org.eclipse.compare.CompareUI.openCompareDialog(input);
 
         boolean confirmed = MessageDialog.openConfirm(shell, "ABAP Guardian",
-                "Apply the suggested fix for " + finding.getRuleId() + "?\n\n"
+                "Apply the reviewed suggestion?\n\n"
                         + "The change is applied in the editor only — nothing is saved or "
                         + "activated. You can undo it with a single Undo.");
         if (!confirmed) {
@@ -95,7 +128,7 @@ public final class SuggestedFixDialog {
         }
         try {
             // Single replace => single undo step.
-            document.replace(offset, length, finding.getSuggestedCode());
+            document.replace(offset, length, suggestedCode);
             return true;
         } catch (BadLocationException e) {
             MessageDialog.openError(shell, "ABAP Guardian",

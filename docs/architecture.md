@@ -37,7 +37,7 @@ Pipeline: `AbapTokenizer` → `AbapParser` → `RuleEngine` → JSON.
 ## ai-gateway (Python 3.12, FastAPI)
 
 Endpoints: `GET /health`, `GET /api/v1/models`, `POST /api/v1/analyze`,
-`POST /api/v1/explain`, `POST /api/v1/suggest-fix`.
+`POST /api/v1/chat`, `POST /api/v1/explain`, `POST /api/v1/suggest-fix`.
 
 Invariants:
 1. Deterministic analysis always runs first (via the analyzer CLI, source
@@ -52,8 +52,10 @@ Invariants:
    `ALLOW_EXTERNAL_PROVIDERS=true` are configured. Hosted Responses API calls
    use a server-side key, set `store: false`, and receive prompts only after
    `gateway/redaction.py` masks likely PII/credentials.
-6. `KnowledgeProvider` protocol (`gateway/knowledge.py`) is the RAG seam:
-   `NoOpKnowledgeProvider` is the default; `LocalVectorKnowledgeProvider` is
+6. `KnowledgeProvider` protocol (`gateway/knowledge.py`) is the RAG seam.
+   Hosted containers use `BundledKnowledgeProvider`, a dependency-free local
+   lexical retriever over the repository's `docs/` and `rules/` files.
+   `LocalVectorKnowledgeProvider` remains available for private deployments as
    a local vector store over a JSON index of Ollama-embedded rule docs and
    SAP best-practice notes (built by `scripts/build_knowledge_index.py` from
    `docs/rules.md` and `docs/knowledge/`). It activates when
@@ -61,17 +63,24 @@ Invariants:
    similarity plus an exact rule-ID boost, degrades to rule-ID keyword
    matching when embeddings are unavailable, and returns nothing on a
    missing/corrupt index — the gateway works identically without it.
-   Retrieved snippets are injected into enhancement prompts *before* the
-   redaction layer, so they are masked like everything else.
+   Retrieved snippets are injected into chat/enhancement prompts *before* the
+   redaction layer, so they are masked like everything else. No bundled
+   knowledge is uploaded to a separate indexing service.
 
 ## Eclipse plug-in
 
 - Public platform APIs only; nothing from `.internal` packages.
 - Everything ADT-specific is isolated in
   `com.abapguardian.eclipse.adapter.AdtEditorAdapter`.
-- Analysis runs in a background `Job`; results appear in the findings view
-  (Severity | Category | Rule | Line | Confidence | Title) and as editor
-  annotations.
+- Analysis and chat run in background `Job`s. `LiveAnalysisController`
+  debounces editor changes, cancels stale work and supports an independent
+  on-save trigger; both are disabled by default.
+- Results appear in the findings view (Severity | Category | Rule | Line |
+  Confidence | Title | Description | Suggestion) and as editor annotations.
+- `CopilotView` is stacked next to Problems, keeps an in-memory bounded
+  conversation and can include the active editor or selection as context.
+- `GuardianStartup` reports service state and opens Welcome/What's New once
+  for each installed bundle version.
 - Suggested fixes are previewed in a compare dialog and applied only after
   explicit confirmation, as one document replace (single undo). The plug-in
   never saves or activates objects.
@@ -85,3 +94,7 @@ Invariants:
 `severity`, `confidence`, `title`, `explanation`, `evidence`, `startLine`,
 `startColumn`, `endLine`, `endColumn` (all 1-based), `recommendation`,
 `suggestedCode`, `requiresHumanReview`, `documentationReferences`.
+
+`POST /api/v1/chat` accepts `question`, optional `source`, `selection`, object
+metadata and a bounded `history[]`; it returns `answer`, `model`,
+`knowledgeReferences[]` and `contextIncluded`.

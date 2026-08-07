@@ -19,9 +19,15 @@ COPY ai-gateway/pyproject.toml ai-gateway/README.md ./
 COPY ai-gateway/gateway ./gateway
 RUN python -m pip install --no-cache-dir .
 
+# Curated project rules and ABAP guidance are retrieved locally by the
+# gateway and included in chat prompts. No external vector database is used.
+COPY docs /app/knowledge/docs
+COPY rules /app/knowledge/rules
+
 COPY --from=analyzer-build /build/analyzer-core/target/analyzer-core-*.jar /app/analyzer.jar
 
 ENV ANALYZER_JAR=/app/analyzer.jar
+ENV BUNDLED_KNOWLEDGE_PATH=/app/knowledge
 ENV PORT=8000
 EXPOSE 8000
 

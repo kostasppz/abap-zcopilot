@@ -36,6 +36,10 @@ authorization, per-user quotas, abuse protection and organizational approval.
   explicit confirmation and results in exactly one undoable document edit.
 - The plug-in never auto-saves and never triggers activation of ABAP
   objects.
+- Live analysis and analyze-on-save are off by default. Automatic online AI
+  has a separate opt-in, and stale debounced jobs cannot update the editor.
+- Copilot history remains in memory only. The context checkbox controls
+  whether active source/selection is included in a request.
 - `SecureCredentialStore` wraps Eclipse secure storage (encrypted) for any
   future credentials; nothing secret goes into plain preferences.
 

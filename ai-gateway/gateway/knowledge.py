@@ -20,6 +20,7 @@ import math
 import os
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 import httpx
@@ -48,6 +49,74 @@ class NoOpKnowledgeProvider:
 
     def retrieve(self, query: str, limit: int = 3) -> list[KnowledgeSnippet]:
         return []
+
+
+_WORD_RE = re.compile(r"[A-Z0-9_]{3,}", re.IGNORECASE)
+_SUPPORTED_KNOWLEDGE_SUFFIXES = {".md", ".txt", ".yaml", ".yml", ".abap"}
+
+
+class BundledKnowledgeProvider:
+    """Dependency-free lexical retrieval over documentation shipped in the image.
+
+    Files are read once and split into bounded passages. Retrieval is local to
+    the Guardian service: no document is uploaded to a separate vector store.
+    """
+
+    def __init__(self, root_path: str) -> None:
+        self.root_path = Path(root_path)
+        self._snippets: list[KnowledgeSnippet] | None = None
+
+    @staticmethod
+    def _tokens(text: str) -> set[str]:
+        return {token.upper() for token in _WORD_RE.findall(text)}
+
+    def _load(self) -> list[KnowledgeSnippet]:
+        if self._snippets is not None:
+            return self._snippets
+        snippets: list[KnowledgeSnippet] = []
+        if not self.root_path.is_dir():
+            self._snippets = snippets
+            return snippets
+        for path in sorted(self.root_path.rglob("*")):
+            if not path.is_file() or path.suffix.lower() not in _SUPPORTED_KNOWLEDGE_SUFFIXES:
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except (OSError, UnicodeError):
+                continue
+            source = path.relative_to(self.root_path).as_posix()
+            paragraphs = [part.strip() for part in re.split(r"\n\s*\n", text) if part.strip()]
+            current: list[str] = []
+            size = 0
+            for paragraph in paragraphs:
+                if current and size + len(paragraph) > 1800:
+                    snippets.append(KnowledgeSnippet(source=source, content="\n\n".join(current)))
+                    current, size = [], 0
+                current.append(paragraph[:1800])
+                size += len(paragraph)
+            if current:
+                snippets.append(KnowledgeSnippet(source=source, content="\n\n".join(current)))
+        self._snippets = snippets
+        return snippets
+
+    def retrieve(self, query: str, limit: int = 3) -> list[KnowledgeSnippet]:
+        if limit <= 0:
+            return []
+        query_tokens = self._tokens(query)
+        query_rule_ids = set(_RULE_ID_RE.findall(query.upper()))
+        if not query_tokens:
+            return []
+        scored: list[KnowledgeSnippet] = []
+        for snippet in self._load():
+            content_tokens = self._tokens(snippet.content)
+            overlap = query_tokens.intersection(content_tokens)
+            score = len(overlap) / max(1.0, math.sqrt(len(query_tokens) * len(content_tokens)))
+            if query_rule_ids.intersection(set(_RULE_ID_RE.findall(snippet.content.upper()))):
+                score += _RULE_ID_BOOST
+            if score > 0.0:
+                scored.append(KnowledgeSnippet(snippet.source, snippet.content, round(score, 4)))
+        scored.sort(key=lambda item: item.score, reverse=True)
+        return scored[:limit]
 
 
 _RULE_ID_RE = re.compile(r"\b(?:PERF|SEC|PRIV|POL)_[A-Z0-9_]+\b")
@@ -183,8 +252,11 @@ class LocalVectorKnowledgeProvider:
 
 
 def get_default_provider() -> KnowledgeProvider:
-    """Local vector provider when a knowledge index is configured; else NoOp."""
+    """Prefer configured vector knowledge, then bundled repository knowledge."""
     index_path = settings.knowledge_index_path
     if index_path and os.path.isfile(index_path):
         return LocalVectorKnowledgeProvider(index_path)
+    bundled_path = settings.bundled_knowledge_path
+    if bundled_path and os.path.isdir(bundled_path):
+        return BundledKnowledgeProvider(bundled_path)
     return NoOpKnowledgeProvider()

@@ -43,13 +43,26 @@ values below 1.0 — a human decides whether a real problem exists.
 
 ## What the AI can and cannot do
 
-- The AI sees at most a bounded snippet (4000 chars) plus finding metadata.
+- The AI sees at most a bounded, redacted snippet (4000 chars) plus finding
+  metadata or the current Copilot question/conversation context.
 - The hosted Guardian service necessarily sees the complete document for
   deterministic analysis; the external LLM does not receive that full source.
 - It can improve explanation/recommendation/suggested-code **text** only.
 - It cannot add findings, remove findings, or alter line/column numbers —
   positions come exclusively from the deterministic engine and are enforced
   at merge time (`gateway/enhancement.py`), with tests proving it.
+
+## Eclipse live analysis and chat
+
+- Live analysis and analyze-on-save are disabled by default.
+- Enabling either option means the current document is sent to the configured
+  Guardian service after the chosen delay or save event.
+- Automatic runs use deterministic analysis by default; automatic online-AI
+  enhancement requires a separate switch.
+- Copilot includes source only when **Use active ABAP editor/selection as
+  context** is checked. Chat history lives in memory in the Eclipse view and is
+  not persisted by the plug-in.
+- OpenAI Responses requests remain stateless with `store: false`.
 
 ## Suppression accountability
 

@@ -3,6 +3,7 @@ package com.abapguardian.eclipse.handlers;
 import com.abapguardian.eclipse.adapter.AdtEditorAdapter;
 import com.abapguardian.eclipse.jobs.AnalyzeJob;
 import com.abapguardian.eclipse.views.FindingsView;
+import com.abapguardian.eclipse.ui.FindingAnnotations;
 
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
@@ -33,30 +34,54 @@ public class AnalyzeCurrentHandler extends AbstractHandler {
                     "No active editor. Open an ABAP source first.");
             return null;
         }
+        analyze(window, editor);
+        return null;
+    }
+
+    /** Runs a manual analysis for an editor and updates both view and markers. */
+    public static void analyze(IWorkbenchWindow window, IEditorPart editor) {
         Optional<String> source = AdtEditorAdapter.getSource(editor);
         if (source.isEmpty()) {
             MessageDialog.openInformation(window.getShell(), "ABAP Guardian",
                     "The active editor does not provide readable text content.");
-            return null;
+            return;
         }
         String objectName = AdtEditorAdapter.getObjectName(editor);
         String objectType = AdtEditorAdapter.getObjectType(editor);
 
         new AnalyzeJob(source.get(), objectName, objectType, result ->
-                Display.getDefault().asyncExec(() -> showInFindingsView(window, result))
+                Display.getDefault().asyncExec(() -> showInFindingsView(window, editor, result))
         ).schedule();
-        return null;
     }
 
     static void showInFindingsView(IWorkbenchWindow window,
                                    com.abapguardian.eclipse.api.GuardianAnalysisResult result) {
+        IEditorPart editor = window.getActivePage() == null
+                ? null : window.getActivePage().getActiveEditor();
+        showInFindingsView(window, editor, result);
+    }
+
+    public static void showInFindingsView(IWorkbenchWindow window, IEditorPart editor,
+                                          com.abapguardian.eclipse.api.GuardianAnalysisResult result) {
+        showInFindingsView(window, editor, result, true);
+    }
+
+    public static void showInFindingsView(IWorkbenchWindow window, IEditorPart editor,
+                                          com.abapguardian.eclipse.api.GuardianAnalysisResult result,
+                                          boolean activateView) {
         try {
             IWorkbenchPage page = window.getActivePage();
             if (page == null) {
                 return;
             }
-            FindingsView view = (FindingsView) page.showView(FindingsView.ID);
+            FindingsView view = (FindingsView) page.showView(FindingsView.ID, null,
+                    activateView ? IWorkbenchPage.VIEW_ACTIVATE : IWorkbenchPage.VIEW_VISIBLE);
             view.showResult(result);
+            if (editor != null) {
+                AdtEditorAdapter.getDocument(editor).ifPresent(document ->
+                        AdtEditorAdapter.getAnnotationModel(editor).ifPresent(model ->
+                                FindingAnnotations.apply(model, document, result.getFindings())));
+            }
         } catch (PartInitException e) {
             com.abapguardian.eclipse.Activator.logError("Cannot open findings view", e);
         }

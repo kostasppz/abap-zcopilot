@@ -12,10 +12,13 @@ Releases are driven by tags and the `release.yml` workflow.
    - Python: `version` in `ai-gateway/pyproject.toml` and
      `gateway/__init__.py`.
 3. Update `PROJECT_STATUS.md` and commit.
-4. Verify the hosted service URL in
+4. For plug-in releases, manually verify in an ADT workbench: Copilot docking,
+   editor context menu, live debounce/on-save opt-ins, annotation navigation,
+   Welcome-once behavior, and suggested-fix compare confirmation.
+5. Verify the hosted service URL in
    `GuardianPreferences.DEFAULT_SERVICE_URL` and deploy `render.yaml` if the
    service is not already live. Store `OPENAI_API_KEY` only in the host.
-5. Tag and push:
+6. Tag and push:
 
    ```bash
    git tag vX.Y.Z

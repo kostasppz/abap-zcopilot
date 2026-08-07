@@ -14,9 +14,9 @@ based rules with accurate line and column positions. An optional AI gateway
 (FastAPI plus a hosted OpenAI Responses API model or local Ollama) enriches
 findings with better explanations and suggested fixes.
 
-An Eclipse plug-in integrates the analysis into ABAP Development Tools:
-findings view, editor annotations, compare-based fix preview with explicit
-confirmation and single undo.
+An Eclipse plug-in integrates the analysis into ABAP Development Tools with
+a docked Copilot chat, live/on-save findings, editor annotations, contextual
+quick actions and compare-based fix previews with explicit confirmation.
 
 > **Important non-guarantee disclaimer:** ABAP Guardian is an assistance
 > tool. Its findings are heuristics with confidence values; it does not
@@ -51,6 +51,31 @@ developer workstation.
    `Cmd+Option+G` on macOS.
 5. Findings open in the **Guardian Findings** view.
 
+The **ABAP Guardian Copilot** view is stacked beside Eclipse's **Problems**
+view. Open it with `Ctrl+Alt+C`, *ABAP Guardian → Open Copilot*, or
+*Window → Show View → Other… → ABAP Guardian*. It can answer questions about
+the active ABAP object or selected text and cites bundled repository knowledge.
+
+The Findings table keeps Severity, Category, Rule, Line, Confidence and Title,
+and also shows **Description** and **Suggestion**. Right-click a finding and
+choose **Review Suggested Fix…** for a side-by-side diff. Guardian never saves
+or activates the object, and applies a proposed edit only after confirmation.
+For a selected-code Copilot correction, use **Suggest correction**, then
+**Review last suggestion…**; only a fenced ABAP code block can enter the diff
+workflow, and the original selection must still match.
+
+### Optional live analysis
+
+Live analysis and analyze-on-save are disabled by default because the active
+document is sent to the configured Guardian service. Enable either under
+*Window → Preferences → ABAP Guardian*. The typing delay is configurable
+(default five seconds), pending jobs are cancelled when typing continues, and
+online AI for automatic runs has a separate opt-in. Manual analysis and chat
+remain available regardless of these switches.
+
+After installation and after every plug-in update, a Welcome/What's New view
+opens once with privacy information and shortcuts to Copilot and Settings.
+
 The plug-in is configured for `https://abap-zcopilot.onrender.com`. A project
 owner must deploy that service once before the install-only flow works.
 
@@ -70,7 +95,9 @@ container. `render.yaml` configures a proof-of-concept Render deployment.
    and let Eclipse users update once.
 
 The hosted integration uses the OpenAI Responses API with `store: false`,
-server-side credentials and the existing redaction layer. Override
+server-side credentials and the existing redaction layer. Chat retrieves
+relevant passages from the `docs/` and `rules/` content bundled in the Docker
+image; no external vector database is required. Override
 `OPENAI_MODEL` in the hosting environment when required.
 
 > **Proof-of-concept warning:** the public endpoint has no end-user
@@ -91,7 +118,7 @@ Run the gateway locally with Ollama:
 ```bash
 cd ai-gateway
 pip install -e .
-export ANALYZER_JAR=../analyzer-core/target/analyzer-core-0.2.0-SNAPSHOT.jar
+export ANALYZER_JAR=../analyzer-core/target/analyzer-core-0.3.0-SNAPSHOT.jar
 uvicorn gateway.main:app --port 8000
 ```
 
@@ -133,7 +160,8 @@ The `reason` is **mandatory** — suppressions without one are ignored.
 
 - **Explicit hosting boundary.** The ABAP document is sent over HTTPS to the
   configured Guardian service for deterministic analysis. Only a bounded,
-  redacted snippet is sent onward when hosted AI enhancement is enabled.
+  redacted snippet (up to 4000 characters) is sent onward when hosted AI
+  enhancement or context-aware Copilot chat is enabled.
 - **No source retention.** The gateway never stores or logs ABAP source
   (tests enforce this); source is piped to the analyzer via stdin only.
 - **AI cannot lie about positions.** Line/column numbers come exclusively

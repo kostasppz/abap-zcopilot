@@ -73,6 +73,34 @@ class SuggestFixResponse(BaseModel):
     requiresHumanReview: bool = True
 
 
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=4000)
+
+
+class ChatRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=8000)
+    objectName: str = Field(default="UNKNOWN", max_length=255)
+    objectType: str = Field(default="PROG", max_length=32)
+    source: str = ""
+    selection: str = Field(default="", max_length=4000)
+    history: list[ChatMessage] = Field(default_factory=list, max_length=12)
+
+    @field_validator("question")
+    @classmethod
+    def question_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("question must not be blank")
+        return value
+
+
+class ChatResponse(BaseModel):
+    answer: str
+    model: str
+    knowledgeReferences: list[str] = Field(default_factory=list)
+    contextIncluded: bool = False
+
+
 class AiEnhancement(BaseModel):
     """Schema the model's JSON reply must conform to for /analyze enhancement.
 

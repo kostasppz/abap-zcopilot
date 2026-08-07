@@ -1,6 +1,8 @@
 package com.abapguardian.eclipse.adapter;
 
 import org.eclipse.jface.text.IDocument;
+import org.eclipse.jface.text.ITextSelection;
+import org.eclipse.jface.text.source.IAnnotationModel;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.texteditor.ITextEditor;
@@ -40,6 +42,56 @@ public final class AdtEditorAdapter {
         }
         return Optional.ofNullable(
                 textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput()));
+    }
+
+    /** Returns the editor annotation model used for ruler and underline markers. */
+    public static Optional<IAnnotationModel> getAnnotationModel(IEditorPart editor) {
+        ITextEditor textEditor = toTextEditor(editor);
+        if (textEditor == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(
+                textEditor.getDocumentProvider().getAnnotationModel(textEditor.getEditorInput()));
+    }
+
+    /** Returns selected text, or an empty string when no text is selected. */
+    public static String getSelectedText(IEditorPart editor) {
+        ITextEditor textEditor = toTextEditor(editor);
+        if (textEditor == null || textEditor.getSelectionProvider() == null) {
+            return "";
+        }
+        if (textEditor.getSelectionProvider().getSelection() instanceof ITextSelection selection) {
+            return selection.getText() == null ? "" : selection.getText();
+        }
+        return "";
+    }
+
+    /** One-based line where the active text selection starts. */
+    public static int getSelectionStartLine(IEditorPart editor) {
+        ITextEditor textEditor = toTextEditor(editor);
+        if (textEditor != null && textEditor.getSelectionProvider() != null
+                && textEditor.getSelectionProvider().getSelection() instanceof ITextSelection selection) {
+            return selection.getStartLine() + 1;
+        }
+        return 1;
+    }
+
+    public static int getSelectionOffset(IEditorPart editor) {
+        ITextEditor textEditor = toTextEditor(editor);
+        if (textEditor != null && textEditor.getSelectionProvider() != null
+                && textEditor.getSelectionProvider().getSelection() instanceof ITextSelection selection) {
+            return selection.getOffset();
+        }
+        return -1;
+    }
+
+    public static int getSelectionLength(IEditorPart editor) {
+        ITextEditor textEditor = toTextEditor(editor);
+        if (textEditor != null && textEditor.getSelectionProvider() != null
+                && textEditor.getSelectionProvider().getSelection() instanceof ITextSelection selection) {
+            return selection.getLength();
+        }
+        return 0;
     }
 
     /** Best-effort ABAP object name from the editor input. */

@@ -1,6 +1,8 @@
 package com.abapguardian.eclipse.service;
 
 import com.abapguardian.eclipse.api.GuardianAnalysisResult;
+import com.abapguardian.eclipse.api.GuardianChatMessage;
+import com.abapguardian.eclipse.api.GuardianChatResponse;
 import com.abapguardian.eclipse.api.GuardianFinding;
 import com.abapguardian.eclipse.preferences.GuardianPreferences;
 
@@ -63,6 +65,37 @@ public class GatewayClient {
                 parseFindings(body.arr("findings")),
                 parseFindings(body.arr("suppressedFindings")),
                 body.bool("aiEnhanced", false));
+    }
+
+    public GuardianChatResponse chat(String question, String source, String selection,
+                                     String objectName, String objectType,
+                                     List<GuardianChatMessage> history) throws GatewayException {
+        List<JsonLite.Obj> turns = new ArrayList<>();
+        for (GuardianChatMessage message : history) {
+            turns.add(new JsonLite.Obj()
+                    .put("role", message.role())
+                    .put("content", truncate(message.content(), 4000)));
+        }
+        JsonLite.Obj payload = new JsonLite.Obj()
+                .put("question", question)
+                .put("source", source)
+                .put("selection", truncate(selection, 4000))
+                .put("objectName", objectName)
+                .put("objectType", objectType)
+                .put("history", turns);
+        JsonLite.Obj body = post("/api/v1/chat", payload);
+        return new GuardianChatResponse(
+                body.str("answer", ""),
+                body.str("model", ""),
+                body.strList("knowledgeReferences"),
+                body.bool("contextIncluded", false));
+    }
+
+    private static String truncate(String value, int maxLength) {
+        if (value == null || value.length() <= maxLength) {
+            return value == null ? "" : value;
+        }
+        return value.substring(0, maxLength);
     }
 
     private JsonLite.Obj post(String path, JsonLite.Obj payload) throws GatewayException {

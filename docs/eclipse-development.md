@@ -51,6 +51,10 @@ ADT installation with PDE). Launch a runtime workbench with the plug-in via
 
 ## UI overview
 
+- **Analyze Current Editor shortcut** — press `Ctrl+Alt+G` on Windows/Linux
+  or `Cmd+Option+G` on macOS while an ABAP source editor is active. The
+  binding can be changed under *Window → Preferences → General → Keys* by
+  searching for **Analyze Current Editor**.
 - **Guardian Findings view** — columns Severity | Category | Rule | Line |
   Confidence | Title; double-click navigates to the finding.
 - **Editor annotations** — orange markers per finding

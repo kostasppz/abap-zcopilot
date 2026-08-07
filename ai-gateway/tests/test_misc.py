@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 from unittest.mock import patch
 
 import respx
 from httpx import Response
 
+from gateway import llm_client
 from gateway.config import settings
 from gateway.knowledge import (
     KnowledgeProvider,
@@ -16,13 +18,22 @@ from gateway.redaction import redact
 
 
 def test_health(client):
-    with patch("gateway.ollama_client.is_available", return_value=True), \
+    with patch("gateway.llm_client.is_available", return_value=True), \
          patch("gateway.analyzer.analyzer_available", return_value=True):
         resp = client.get("/health")
     body = resp.json()
     assert resp.status_code == 200
     assert body["status"] == "ok"
+    assert body["llmAvailable"] is True
+    assert body["llmProvider"] == "ollama"
     assert body["ollamaAvailable"] is True
+
+
+def test_hosted_provider_requires_explicit_opt_in():
+    with patch.object(settings, "llm_provider", "openai"), \
+         patch.object(settings, "openai_api_key", "server-secret"), \
+         patch.object(settings, "allow_external_providers", False):
+        assert asyncio.run(llm_client.is_available()) is False
 
 
 @respx.mock

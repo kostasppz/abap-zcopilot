@@ -43,9 +43,12 @@ Use:
 * Python 3.12
 * FastAPI
 * Pydantic
-* Ollama as the default AI provider
+* Hosted OpenAI Responses API for the install-only proof of concept
+* Ollama as an optional local/private AI provider
 
-Do not require a cloud AI provider. The default configuration must be completely local.
+Eclipse users must not install a local runtime. The configured HTTPS service
+contains the analyzer and gateway. Provider credentials are server-side only;
+local/private Ollama remains supported for organizations that require it.
 
 ## analyzer-core
 
@@ -217,7 +220,8 @@ A suppression must require a reason.
 
 ## AI gateway
 
-Create a local FastAPI application in `ai-gateway`.
+Create a container-ready FastAPI application in `ai-gateway` that can run as
+a hosted service or locally.
 
 Endpoints:
 
@@ -229,9 +233,15 @@ POST /api/v1/explain
 POST /api/v1/suggest-fix
 ```
 
-The default Ollama configuration is:
+Supported provider configuration includes:
 
 ```text
+LLM_PROVIDER=openai
+OPENAI_API_KEY=<server-side secret>
+OPENAI_MODEL=gpt-5.6
+ALLOW_EXTERNAL_PROVIDERS=true
+
+# Optional local/private alternative
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=gemma4:e4b
 ```
@@ -253,7 +263,8 @@ The analysis request must accept:
 }
 ```
 
-The service must first run deterministic analysis. It may then ask Ollama to:
+The service must first run deterministic analysis. It may then ask the
+configured hosted or local model to:
 
 * Explain deterministic findings
 * Rank findings
@@ -274,14 +285,16 @@ Add configurable limits:
 ```text
 Maximum source length
 Request timeout
-Ollama timeout
+AI provider timeout
 Maximum findings
 Maximum AI tokens
 ```
 
 Add an optional redaction layer that replaces detected secrets and sensitive literal values before any non-local AI provider is called.
 
-External AI providers must be disabled by default.
+External AI providers must require the explicit server-side opt-in
+`ALLOW_EXTERNAL_PROVIDERS=true`. Requests must disable provider storage when
+the selected API supports it.
 
 ## Existing local RAG compatibility
 
@@ -350,7 +363,7 @@ The plug-in must:
 
 1. Read the current ABAP editor selection.
 2. Use the entire document when no text is selected.
-3. Send the code to the configured local analysis endpoint.
+3. Send the code to the configured HTTPS analysis endpoint.
 4. Run network operations in a background Eclipse Job.
 5. Support cancellation.
 6. Never freeze the Eclipse UI.
@@ -369,8 +382,8 @@ Create an Eclipse preference page containing:
 
 ```text
 Analysis service URL
-Ollama model
-Local-only mode
+Hosted/private service URL
+Online-AI toggle
 Enable AI explanations
 Enable AI code suggestions
 Minimum severity
@@ -383,10 +396,11 @@ Rule profile
 Default service URL:
 
 ```text
-http://localhost:8000
+https://abap-zcopilot.onrender.com
 ```
 
-Display a visible warning before enabling an external analysis service.
+Display clear text that the full document reaches the configured Guardian
+service and a bounded redacted snippet may reach its external LLM.
 
 Store no API key directly in source code or normal preference files. Create an abstraction for Eclipse secure storage.
 
@@ -605,7 +619,7 @@ Work iteratively:
 3. Implement tokenizer and statement model.
 4. Implement initial deterministic rules.
 5. Add tests.
-6. Implement FastAPI and Ollama integration.
+6. Implement FastAPI with hosted OpenAI and optional Ollama integration.
 7. Implement Eclipse commands and findings view.
 8. Implement annotations and comparison dialog.
 9. Build feature and update site.
@@ -632,6 +646,7 @@ The initial successful milestone is reached when:
 * The p2 update-site ZIP is generated.
 * The plug-in can analyze selected ABAP code.
 * Findings appear with correct line numbers.
-* The plug-in communicates with local Ollama through FastAPI.
+* The plug-in communicates with the hosted FastAPI service without requiring
+  local Python, Java, Maven or Ollama.
 * No source code is persisted or logged.
 * At least 20 deterministic rules are implemented and tested.

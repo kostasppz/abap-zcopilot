@@ -1,15 +1,30 @@
 # ABAP Guardian AI Gateway
 
 FastAPI service that runs the deterministic ABAP Guardian analyzer first and
-optionally enriches findings with a local Ollama model (`gemma4:e4b` by
-default). See the repository root `README.md` and `docs/` for full
-documentation.
+optionally enriches findings through either hosted OpenAI Responses or local
+Ollama. See the repository root `README.md` and `docs/` for full documentation.
+
+## Hosted container
+
+From the repository root:
+
+```bash
+docker build -t abap-guardian .
+docker run --rm -p 8000:8000 \
+  -e LLM_PROVIDER=openai \
+  -e ALLOW_EXTERNAL_PROVIDERS=true \
+  -e OPENAI_API_KEY \
+  abap-guardian
+```
+
+The API key remains on the server. OpenAI requests set `store: false` and
+receive only the bounded prompt after Guardian redaction.
 
 ## Quick start
 
 ```bash
 pip install -e .
-export ANALYZER_JAR=../analyzer-core/target/analyzer-core-0.1.0-SNAPSHOT.jar
+export ANALYZER_JAR=../analyzer-core/target/analyzer-core-0.2.0-SNAPSHOT.jar
 uvicorn gateway.main:app --port 8000
 ```
 

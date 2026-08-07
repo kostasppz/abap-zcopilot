@@ -1,7 +1,8 @@
 # ABAP Guardian
 
 AI-assisted static analysis and code review for SAP ABAP — deterministic
-rules first, local AI second, your code never leaves your machine by default.
+rules first, optional hosted AI second. Eclipse users install one plug-in;
+the analyzer and model integration run on a managed HTTPS service.
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
@@ -10,8 +11,8 @@ rules first, local AI second, your code never leaves your machine by default.
 ABAP Guardian analyzes ABAP source code for **performance**, **security**
 and **privacy** problems using 34 deterministic, tokenizer/statement-model
 based rules with accurate line and column positions. An optional AI gateway
-(FastAPI + [Ollama](https://ollama.com), default model `gemma4:e4b`) enriches
-findings with better explanations and suggested fixes — fully locally.
+(FastAPI plus a hosted OpenAI Responses API model or local Ollama) enriches
+findings with better explanations and suggested fixes.
 
 An Eclipse plug-in integrates the analysis into ABAP Development Tools:
 findings view, editor annotations, compare-based fix preview with explicit
@@ -30,49 +31,71 @@ confirmation and single undo.
 | Path | Description |
 | --- | --- |
 | `analyzer-core/` | Pure Java 21 rule engine (no Eclipse dependencies) with CLI. |
-| `ai-gateway/` | Python FastAPI gateway; deterministic-first, optional local AI. |
+| `ai-gateway/` | Python FastAPI gateway; hosted OpenAI or optional local Ollama. |
 | `eclipse-plugin/` | Eclipse/ADT plug-in (public APIs only). |
 | `eclipse-feature/`, `eclipse-updatesite/` | Feature + p2 update site (Tycho). |
 | `rules/` | Default YAML rule configuration (performance, security, privacy, policy). |
 | `samples/` | Good and bad ABAP examples. |
 | `docs/` | Architecture, rule docs, privacy/security model, guides. |
+| `Dockerfile`, `render.yaml` | One-container hosted deployment configuration. |
 
-## Quick start
+## Eclipse user: install and analyze
 
-### 1. Build the analyzer
+No Python, Java, Maven, Ollama or model installation is required on the
+developer workstation.
+
+1. In Eclipse/ADT, open *Help → Install New Software…*.
+2. Use `https://kostasppz.github.io/abap-zcopilot/` in **Work with**.
+3. Install **ABAP Guardian** and restart Eclipse.
+4. Open an ABAP source editor and press `Ctrl+Alt+G` on Windows/Linux or
+   `Cmd+Option+G` on macOS.
+5. Findings open in the **Guardian Findings** view.
+
+The plug-in is configured for `https://abap-zcopilot.onrender.com`. A project
+owner must deploy that service once before the install-only flow works.
+
+## Project owner: deploy the hosted service once
+
+The included Dockerfile builds the Java analyzer and Python gateway into one
+container. `render.yaml` configures a proof-of-concept Render deployment.
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/kostasppz/abap-zcopilot)
+
+1. Deploy the repository using the button above.
+2. Set the secret `OPENAI_API_KEY` in the service dashboard. Never commit it.
+3. Confirm `https://<service-host>/health` reports `status: "ok"`,
+   `analyzerAvailable: true` and `llmAvailable: true`.
+4. If Render assigns a different hostname, change
+   `GuardianPreferences.DEFAULT_SERVICE_URL`, publish a new plug-in release,
+   and let Eclipse users update once.
+
+The hosted integration uses the OpenAI Responses API with `store: false`,
+server-side credentials and the existing redaction layer. Override
+`OPENAI_MODEL` in the hosting environment when required.
+
+> **Proof-of-concept warning:** the public endpoint has no end-user
+> authentication and uses the project owner's model quota. Use it only for
+> controlled testing. Before production use, add organization authentication,
+> rate limiting, audit controls and an approved private deployment.
+
+## Local development and self-hosting
+
+Build and test the deterministic analyzer:
 
 ```bash
-mvn clean verify        # builds and tests analyzer-core (default profile)
+mvn clean verify
 ```
 
-### 2. Run the AI gateway
+Run the gateway locally with Ollama:
 
 ```bash
 cd ai-gateway
 pip install -e .
-export ANALYZER_JAR=../analyzer-core/target/analyzer-core-0.1.0-SNAPSHOT.jar
+export ANALYZER_JAR=../analyzer-core/target/analyzer-core-0.2.0-SNAPSHOT.jar
 uvicorn gateway.main:app --port 8000
 ```
 
-Optional local AI: install Ollama and pull the default model
-(`ollama pull gemma4:e4b`). Override via `OLLAMA_BASE_URL` / `OLLAMA_MODEL`.
-Without Ollama the gateway still works — deterministic findings only.
-
-### 3. Analyze something
-
-```bash
-curl -s localhost:8000/api/v1/analyze \
-  -H 'Content-Type: application/json' \
-  -d "$(jq -n --rawfile src samples/bad/z_bad_hr_report.abap '{source: $src, objectName: "Z_BAD_HR_REPORT"}')"
-```
-
-Or without the gateway:
-
-```bash
-java -jar analyzer-core/target/analyzer-core-0.1.0-SNAPSHOT.jar samples/bad/z_bad_hr_report.abap
-```
-
-### 4. Eclipse plug-in
+Build the Eclipse update site:
 
 ```bash
 mvn clean verify -Peclipse   # needs network access to download.eclipse.org
@@ -82,9 +105,7 @@ The p2 update-site ZIP lands in `eclipse-updatesite/target/`. Install via
 *Help → Install New Software… → Add → Archive*. See
 `docs/eclipse-development.md`.
 
-With an ABAP source editor active, press `Ctrl+Alt+G` on Windows/Linux or
-`Cmd+Option+G` on macOS to run **Analyze Current Editor**. The shortcut can be
-changed in *Window → Preferences → General → Keys*.
+The shortcut can be changed in *Window → Preferences → General → Keys*.
 
 ## Rules
 
@@ -110,9 +131,9 @@ The `reason` is **mandatory** — suppressions without one are ignored.
 
 ## Privacy & security posture
 
-- **Local by default.** Analysis and AI run on your machine; external AI
-  providers are disabled unless explicitly enabled, and a redaction layer
-  masks likely personal data and credentials in prompts.
+- **Explicit hosting boundary.** The ABAP document is sent over HTTPS to the
+  configured Guardian service for deterministic analysis. Only a bounded,
+  redacted snippet is sent onward when hosted AI enhancement is enabled.
 - **No source retention.** The gateway never stores or logs ABAP source
   (tests enforce this); source is piped to the analyzer via stdin only.
 - **AI cannot lie about positions.** Line/column numbers come exclusively

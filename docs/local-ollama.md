@@ -1,5 +1,9 @@
 # Local Ollama Setup
 
+This setup is optional and intended for local development or organizations
+that do not permit source or prompts to leave their network. Normal Eclipse
+users of the hosted release do not install Ollama.
+
 ABAP Guardian's AI features run entirely on your machine through
 [Ollama](https://ollama.com). No cloud account is required.
 
@@ -29,7 +33,7 @@ The gateway reads:
 Check availability:
 
 ```bash
-curl -s localhost:8000/health          # ollamaAvailable: true/false
+curl -s localhost:8000/health          # llmAvailable and ollamaAvailable
 curl -s localhost:8000/api/v1/models   # models known to Ollama
 ```
 

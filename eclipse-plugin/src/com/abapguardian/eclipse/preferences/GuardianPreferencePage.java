@@ -27,8 +27,9 @@ public class GuardianPreferencePage extends FieldEditorPreferencePage implements
     public GuardianPreferencePage() {
         super(GRID);
         setPreferenceStore(new ScopedPreferenceStore(InstanceScope.INSTANCE, Activator.PLUGIN_ID));
-        setDescription("ABAP Guardian analysis service settings. "
-                + "The service runs locally by default; no code leaves your machine.");
+        setDescription("ABAP Guardian hosted analysis service settings. "
+                + "Deterministic analysis runs on the service; when AI is enabled, "
+                + "a redacted code snippet may be sent to its configured LLM provider.");
     }
 
     @Override
@@ -43,7 +44,7 @@ public class GuardianPreferencePage extends FieldEditorPreferencePage implements
         addField(new IntegerFieldEditor(GuardianPreferences.KEY_TIMEOUT_SECONDS,
                 "Request &timeout (seconds):", getFieldEditorParent(), 4));
         addField(new BooleanFieldEditor(GuardianPreferences.KEY_USE_AI,
-                "Use &AI enhancement (local model via gateway)", getFieldEditorParent()));
+                "Use &online AI enhancement", getFieldEditorParent()));
         addField(new ComboFieldEditor(GuardianPreferences.KEY_MIN_SEVERITY,
                 "Minimum &severity to show:",
                 new String[][] {
@@ -62,8 +63,8 @@ public class GuardianPreferencePage extends FieldEditorPreferencePage implements
                     (healthy ? SWT.ICON_INFORMATION : SWT.ICON_ERROR) | SWT.OK);
             box.setText("ABAP Guardian");
             box.setMessage(healthy
-                    ? "Gateway is reachable and healthy."
-                    : "Gateway is not reachable. Check the service URL and that the gateway is running.");
+                    ? "Hosted ABAP Guardian service is reachable and healthy."
+                    : "Hosted service is not reachable. Check the service URL or deployment status.");
             box.open();
         });
     }

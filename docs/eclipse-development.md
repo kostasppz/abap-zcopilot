@@ -25,9 +25,9 @@ Artifacts:
 1. Build the update site (or download the release ZIP).
 2. *Help → Install New Software… → Add… → Archive*, select the ZIP.
 3. Select **ABAP Guardian**, finish, restart.
-4. Start the gateway (`uvicorn gateway.main:app --port 8000`).
-5. Configure via *ABAP Guardian → Configure* (default URL
-   `http://localhost:8000`).
+4. The release defaults to the hosted service at
+   `https://abap-zcopilot.onrender.com`; no local gateway is required.
+5. Configure a different private service via *ABAP Guardian → Configure*.
 
 ## Development in the IDE
 
@@ -61,5 +61,5 @@ ADT installation with PDE). Launch a runtime workbench with the plug-in via
   (`FindingAnnotations`).
 - **Compare dialog** — `SuggestedFixDialog` shows current vs suggested code
   before any change.
-- **Preference page** — service URL, timeout, AI toggle, minimum severity,
-  connection test.
+- **Preference page** — hosted service URL, timeout, online-AI toggle,
+  minimum severity and connection test.

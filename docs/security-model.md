@@ -4,10 +4,11 @@
 
 | Component | Exposure | Mitigations |
 | --- | --- | --- |
-| ai-gateway | localhost HTTP | No auth by design (localhost only); configurable limits (`MAX_SOURCE_LENGTH`, timeouts, `MAX_FINDINGS`, `MAX_TOKENS`) bound resource use; no source retention. |
+| ai-gateway | Public HTTPS in proof of concept | No source retention; configurable limits (`MAX_SOURCE_LENGTH`, timeouts, `MAX_FINDINGS`, `MAX_TOKENS`). Add organization authentication and rate limiting before production. |
 | analyzer-core | subprocess | Source via stdin only; JSON out; no network access. |
 | Eclipse plug-in | IDE | Read-only analysis; edits only after explicit confirmation; single-undo; never saves/activates; secure storage for any credentials. |
-| Ollama | localhost HTTP | Local model; schema-validated JSON responses; timeouts. |
+| Hosted LLM | Outbound HTTPS | Server-side API key, explicit opt-in, redacted bounded prompts, `store: false`, schema validation and timeouts. |
+| Ollama (optional) | localhost HTTP | Local development model; schema-validated JSON responses; timeouts. |
 
 ## Gateway hardening
 
@@ -19,7 +20,13 @@
   model are ignored unconditionally.
 - **Error hygiene.** Analyzer stderr is never propagated verbatim; error
   messages contain no source content.
-- **No secrets.** The default configuration requires no credentials at all.
+- **Server-side secrets.** `OPENAI_API_KEY` is supplied by the hosting secret
+  store and is never committed or distributed in the Eclipse plug-in.
+
+The included public Render configuration is for a controlled proof of
+concept. It deliberately supports install-only clients but therefore spends
+the service owner's model quota. Production deployment requires identity,
+authorization, per-user quotas, abuse protection and organizational approval.
 
 ## Eclipse plug-in hardening
 

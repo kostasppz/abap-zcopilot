@@ -93,6 +93,9 @@ class ModelsResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     status: Literal["ok", "degraded"]
+    llmAvailable: bool
+    llmProvider: str
+    # Kept for backward compatibility with existing local installations.
     ollamaAvailable: bool
     analyzerAvailable: bool
     version: str

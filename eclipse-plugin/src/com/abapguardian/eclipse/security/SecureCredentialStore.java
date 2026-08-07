@@ -11,7 +11,8 @@ import java.util.Optional;
  * (e.g. an API key for an explicitly-enabled external AI provider).
  *
  * <p>Credentials are NEVER written to normal preferences, workspace
- * metadata or logs. The default local gateway needs no credentials at all.
+ * metadata or logs. Hosted provider credentials remain on the server and
+ * are never distributed with the plug-in.
  */
 public class SecureCredentialStore {
 

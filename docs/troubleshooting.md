@@ -7,7 +7,7 @@ Set `ANALYZER_JAR` to the built jar and ensure `java` is on PATH:
 
 ```bash
 mvn -pl analyzer-core clean package
-export ANALYZER_JAR=$PWD/analyzer-core/target/analyzer-core-0.1.0-SNAPSHOT.jar
+export ANALYZER_JAR=$PWD/analyzer-core/target/analyzer-core-0.2.0-SNAPSHOT.jar
 ```
 
 **`/analyze` returns 503**
@@ -27,6 +27,11 @@ ollama pull gemma4:e4b
 ```
 
 Deterministic analysis works regardless.
+
+**Hosted `/health` shows `llmAvailable: false`**
+Confirm the service has `LLM_PROVIDER=openai`,
+`ALLOW_EXTERNAL_PROVIDERS=true`, and a valid secret `OPENAI_API_KEY`. The key
+must exist only in the hosting secret store.
 
 **AI output looks unchanged**
 The model's JSON failed schema validation, so the deterministic texts were
@@ -49,8 +54,9 @@ WRITE lv_pernr. "#EC ABAP_GUARDIAN: PRIV_UNMASKED_PERSONNEL_NUMBER reason="appro
 ## Eclipse plug-in
 
 **"Cannot reach ABAP Guardian gateway"**
-Start the gateway and verify the URL in *ABAP Guardian → Configure* (default
-`http://localhost:8000`); use *Test Connection*.
+Verify the hosted deployment is healthy and the URL in *ABAP Guardian →
+Configure* (default `https://abap-zcopilot.onrender.com`); use *Test
+Connection*. Free proof-of-concept instances may need time to wake up.
 
 **No findings view opens**
 *Window → Show View → Other… → ABAP Guardian → Guardian Findings.*

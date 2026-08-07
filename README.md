@@ -82,6 +82,10 @@ The p2 update-site ZIP lands in `eclipse-updatesite/target/`. Install via
 *Help → Install New Software… → Add → Archive*. See
 `docs/eclipse-development.md`.
 
+With an ABAP source editor active, press `Ctrl+Alt+G` on Windows/Linux or
+`Cmd+Option+G` on macOS to run **Analyze Current Editor**. The shortcut can be
+changed in *Window → Preferences → General → Keys*.
+
 ## Rules
 
 34 rules across three categories — 14 `PERF_*`, 11 `SEC_*`, 9 `PRIV_*` — all

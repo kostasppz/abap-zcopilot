@@ -13,7 +13,8 @@ public final class GuardianPreferences {
     public static final String KEY_USE_AI = "useAi";
     public static final String KEY_MIN_SEVERITY = "minSeverity";
 
-    public static final String DEFAULT_SERVICE_URL = "http://localhost:8000";
+    /** Hosted proof-of-concept gateway. Override in Preferences for private deployments. */
+    public static final String DEFAULT_SERVICE_URL = "https://abap-zcopilot.onrender.com";
     public static final int DEFAULT_TIMEOUT_SECONDS = 120;
     public static final boolean DEFAULT_USE_AI = true;
     public static final String DEFAULT_MIN_SEVERITY = "INFO";

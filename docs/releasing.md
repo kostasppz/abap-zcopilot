@@ -12,7 +12,10 @@ Releases are driven by tags and the `release.yml` workflow.
    - Python: `version` in `ai-gateway/pyproject.toml` and
      `gateway/__init__.py`.
 3. Update `PROJECT_STATUS.md` and commit.
-4. Tag and push:
+4. Verify the hosted service URL in
+   `GuardianPreferences.DEFAULT_SERVICE_URL` and deploy `render.yaml` if the
+   service is not already live. Store `OPENAI_API_KEY` only in the host.
+5. Tag and push:
 
    ```bash
    git tag vX.Y.Z
@@ -28,6 +31,10 @@ Releases are driven by tags and the `release.yml` workflow.
   previous tag) and attaches the artifacts.
 - Publishes the p2 repository to GitHub Pages, so users can install from
   `https://<org>.github.io/<repo>/` as an update-site URL.
+
+The release workflow publishes the Eclipse update site; it does not host the
+FastAPI runtime. Render (or an organization-owned container platform) builds
+and runs the root `Dockerfile` separately.
 
 No secrets are stored in the repository; the workflow uses the ephemeral
 `GITHUB_TOKEN` only.

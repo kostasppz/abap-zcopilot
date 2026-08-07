@@ -12,7 +12,7 @@ ABAP = f"DATA {MARKER} TYPE string.\nWRITE {MARKER}.\n"
 def test_source_never_logged(client, deterministic_result, caplog):
     caplog.set_level(logging.DEBUG)
     with patch("gateway.analyzer.run_deterministic_analysis", return_value=deterministic_result), \
-         patch("gateway.ollama_client.is_available", return_value=False):
+         patch("gateway.llm_client.is_available", return_value=False):
         resp = client.post("/api/v1/analyze", json={"source": ABAP})
     assert resp.status_code == 200
     assert MARKER not in caplog.text

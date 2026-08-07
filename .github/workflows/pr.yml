@@ -61,8 +61,14 @@ jobs:
         working-directory: ai-gateway
         run: |
           pip install pip-audit
-          pip install .
-          pip-audit --strict
+          python - <<'PY' > /tmp/abap-guardian-runtime-requirements.txt
+          import tomllib
+          from pathlib import Path
+
+          project = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+          print("\n".join(project["project"]["dependencies"]))
+          PY
+          pip-audit --strict --requirement /tmp/abap-guardian-runtime-requirements.txt
 
   tycho:
     name: Eclipse plug-in (Tycho) build

@@ -33,6 +33,9 @@ def test_runpod_base_creates_authentication_before_nginx_starts() -> None:
     assert "AGENT_WEB_PASSWORD" in start_base
     assert "htpasswd -ciB" in start_base
     assert "AGENT_WEB_PASSWORD must contain at least 24 characters" in start_base
+    assert 'install -d -o root -g "$nginx_auth_group" -m 0750' in start_base
+    assert 'chown root:"$nginx_auth_group"' in start_base
+    assert "chmod 0640" in start_base
     assert "command=/opt/runpod/start-runpod-base.sh" in supervisor
 
 

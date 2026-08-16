@@ -72,8 +72,8 @@ RUN sed -i 's/listen 8001;/listen 127.0.0.1:18001;/' /etc/nginx/nginx.conf \
     && grep -Fq 'listen 127.0.0.1:18001;' /etc/nginx/nginx.conf \
     && grep -Fq 'include /etc/nginx/conf.d/*.conf;' /etc/nginx/nginx.conf \
     && ! grep -Eq 'listen[[:space:]]+8001;' /etc/nginx/nginx.conf \
-    && install -d -m 0700 /run/abap-guardian \
-    && : > /run/abap-guardian/agent-web.htpasswd \
+    && install -d -o root -g www-data -m 0750 /run/abap-guardian \
+    && install -o root -g www-data -m 0640 /dev/null /run/abap-guardian/agent-web.htpasswd \
     && nginx -t \
     && rm -rf /run/abap-guardian
 

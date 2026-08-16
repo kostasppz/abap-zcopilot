@@ -4,6 +4,7 @@ set -Eeuo pipefail
 : "${AGENT_WEB_PASSWORD:?Set AGENT_WEB_PASSWORD with a RunPod secret}"
 
 agent_web_username="${AGENT_WEB_USERNAME:-guardian}"
+nginx_auth_group="${NGINX_AUTH_GROUP:-www-data}"
 
 if [[ ! "$agent_web_username" =~ ^[A-Za-z0-9._-]{1,64}$ ]]; then
   echo "AGENT_WEB_USERNAME contains unsupported characters" >&2
@@ -22,13 +23,20 @@ case "$AGENT_WEB_PASSWORD" in
     ;;
 esac
 
-umask 077
-install -d -m 0700 /run/abap-guardian
+if ! getent group "$nginx_auth_group" >/dev/null; then
+  echo "Nginx authentication group does not exist: $nginx_auth_group" >&2
+  exit 1
+fi
+
+umask 027
+install -d -o root -g "$nginx_auth_group" -m 0750 /run/abap-guardian
 printf '%s\n' "$AGENT_WEB_PASSWORD" \
   | /usr/bin/htpasswd -ciB \
       /run/abap-guardian/agent-web.htpasswd \
       "$agent_web_username" \
       >/dev/null
+chown root:"$nginx_auth_group" /run/abap-guardian/agent-web.htpasswd
+chmod 0640 /run/abap-guardian/agent-web.htpasswd
 
 /usr/sbin/nginx -t
 

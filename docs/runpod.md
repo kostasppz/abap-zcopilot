@@ -317,8 +317,8 @@ RUN sed -i 's/listen 8001;/listen 127.0.0.1:18001;/' /etc/nginx/nginx.conf \
     && grep -Fq 'listen 127.0.0.1:18001;' /etc/nginx/nginx.conf \
     && grep -Fq 'include /etc/nginx/conf.d/*.conf;' /etc/nginx/nginx.conf \
     && ! grep -Eq 'listen[[:space:]]+8001;' /etc/nginx/nginx.conf \
-    && install -d -m 0700 /run/abap-guardian \
-    && : > /run/abap-guardian/agent-web.htpasswd \
+    && install -d -o root -g www-data -m 0750 /run/abap-guardian \
+    && install -o root -g www-data -m 0640 /dev/null /run/abap-guardian/agent-web.htpasswd \
     && nginx -t \
     && rm -rf /run/abap-guardian
 
@@ -361,6 +361,7 @@ set -Eeuo pipefail
 : "${AGENT_WEB_PASSWORD:?Set AGENT_WEB_PASSWORD with a RunPod secret}"
 
 agent_web_username="${AGENT_WEB_USERNAME:-guardian}"
+nginx_auth_group="${NGINX_AUTH_GROUP:-www-data}"
 
 if [[ ! "$agent_web_username" =~ ^[A-Za-z0-9._-]{1,64}$ ]]; then
   echo "AGENT_WEB_USERNAME contains unsupported characters" >&2
@@ -379,13 +380,20 @@ case "$AGENT_WEB_PASSWORD" in
     ;;
 esac
 
-umask 077
-install -d -m 0700 /run/abap-guardian
+if ! getent group "$nginx_auth_group" >/dev/null; then
+  echo "Nginx authentication group does not exist: $nginx_auth_group" >&2
+  exit 1
+fi
+
+umask 027
+install -d -o root -g "$nginx_auth_group" -m 0750 /run/abap-guardian
 printf '%s\n' "$AGENT_WEB_PASSWORD" \
   | /usr/bin/htpasswd -ciB \
       /run/abap-guardian/agent-web.htpasswd \
       "$agent_web_username" \
       >/dev/null
+chown root:"$nginx_auth_group" /run/abap-guardian/agent-web.htpasswd
+chmod 0640 /run/abap-guardian/agent-web.htpasswd
 
 /usr/sbin/nginx -t
 
@@ -624,14 +632,14 @@ docker build `
   --no-cache `
   --platform linux/amd64 `
   --file deploy/runpod/Dockerfile `
-  --tag <DOCKER_USER>/abap-guardian-runpod:0.4.0-runpod4 `
+  --tag <DOCKER_USER>/abap-guardian-runpod:0.4.0-runpod5 `
   .
 ```
 
 This must finish successfully. Then push the immutable version tag:
 
 ```powershell
-docker push <DOCKER_USER>/abap-guardian-runpod:0.4.0-runpod4
+docker push <DOCKER_USER>/abap-guardian-runpod:0.4.0-runpod5
 ```
 
 Do not rely on a floating `latest` tag for the production Pod. A versioned tag
@@ -727,7 +735,7 @@ Open **Templates → New Template** and configure:
 | Setting | Value |
 | --- | --- |
 | Name | `ABAP Guardian Ollama RAG 0.4.0` |
-| Container image | `<DOCKER_USER>/abap-guardian-runpod:0.4.0-runpod4` |
+| Container image | `<DOCKER_USER>/abap-guardian-runpod:0.4.0-runpod5` |
 | Registry credentials | `dockerhub-abap-guardian` |
 | Container disk | `20 GB` |
 | Volume mount path | `/workspace` |
@@ -1288,6 +1296,7 @@ curl -s http://127.0.0.1:8001/health | /opt/agent-venv/bin/python -m json.tool
 | `guardian` does not start | Agent health is unavailable or `GUARDIAN_API_TOKEN` was not injected. |
 | Nginx or `runpod-base` does not start | Verify `AGENT_WEB_PASSWORD` is injected from the RunPod secret and contains at least 24 characters. |
 | Agent website returns 401 | Use username `guardian` and the current `abap_agent_web_password`; remove stale credentials saved by the browser. |
+| Agent website returns Nginx 500 after login | Verify `/run/abap-guardian` is group-readable by `www-data`; use image tag `0.4.0-runpod5` or newer. |
 | `llmAvailable` is false | Verify both model names, Ollama logs and `/api/status`. |
 | Out of GPU memory | Use a smaller quantization/model or a 48 GB GPU. |
 | Public health returns 502 | Guardian is not listening on `0.0.0.0:8001`; check Supervisor and logs. |

@@ -62,12 +62,17 @@ COPY deploy/runpod/start-agent.sh /opt/runpod/start-agent.sh
 COPY deploy/runpod/start-guardian.sh /opt/runpod/start-guardian.sh
 COPY deploy/runpod/supervisord.conf /opt/runpod/supervisord.conf
 
-# The RunPod base image ships a default Nginx site on port 8001. Guardian owns
-# that port, so replace every default site with the authenticated Agent proxy
-# installed below. The proxy listens on 8002 and keeps Agent itself on loopback.
+# The RunPod base image defines its port-8001 proxy directly in nginx.conf and
+# does not load conf.d. Guardian owns 8001, so make the unused base proxy
+# loopback-only on 18001 and load the authenticated Agent proxy on 8002.
 RUN rm -f /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*.conf
 COPY deploy/runpod/nginx-agent-web.conf /etc/nginx/conf.d/abap-agent-web.conf
-RUN install -d -m 0700 /run/abap-guardian \
+RUN sed -i 's/listen 8001;/listen 127.0.0.1:18001;/' /etc/nginx/nginx.conf \
+    && sed -i '/^http {/a\    include /etc/nginx/conf.d/*.conf;' /etc/nginx/nginx.conf \
+    && grep -Fq 'listen 127.0.0.1:18001;' /etc/nginx/nginx.conf \
+    && grep -Fq 'include /etc/nginx/conf.d/*.conf;' /etc/nginx/nginx.conf \
+    && ! grep -Eq 'listen[[:space:]]+8001;' /etc/nginx/nginx.conf \
+    && install -d -m 0700 /run/abap-guardian \
     && : > /run/abap-guardian/agent-web.htpasswd \
     && nginx -t \
     && rm -rf /run/abap-guardian

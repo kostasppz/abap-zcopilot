@@ -307,11 +307,17 @@ COPY deploy/runpod/start-agent.sh /opt/runpod/start-agent.sh
 COPY deploy/runpod/start-guardian.sh /opt/runpod/start-guardian.sh
 COPY deploy/runpod/supervisord.conf /opt/runpod/supervisord.conf
 
-# Remove the base image's port-8001 Nginx site. Guardian owns 8001; the
-# authenticated Agent browser proxy owns 8002.
+# The base image defines a port-8001 proxy directly in nginx.conf and does not
+# load conf.d. Guardian owns 8001, so move that unused proxy to loopback-only
+# port 18001 and load the authenticated Agent browser proxy on 8002.
 RUN rm -f /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*.conf
 COPY deploy/runpod/nginx-agent-web.conf /etc/nginx/conf.d/abap-agent-web.conf
-RUN install -d -m 0700 /run/abap-guardian \
+RUN sed -i 's/listen 8001;/listen 127.0.0.1:18001;/' /etc/nginx/nginx.conf \
+    && sed -i '/^http {/a\    include /etc/nginx/conf.d/*.conf;' /etc/nginx/nginx.conf \
+    && grep -Fq 'listen 127.0.0.1:18001;' /etc/nginx/nginx.conf \
+    && grep -Fq 'include /etc/nginx/conf.d/*.conf;' /etc/nginx/nginx.conf \
+    && ! grep -Eq 'listen[[:space:]]+8001;' /etc/nginx/nginx.conf \
+    && install -d -m 0700 /run/abap-guardian \
     && : > /run/abap-guardian/agent-web.htpasswd \
     && nginx -t \
     && rm -rf /run/abap-guardian
@@ -618,14 +624,14 @@ docker build `
   --no-cache `
   --platform linux/amd64 `
   --file deploy/runpod/Dockerfile `
-  --tag <DOCKER_USER>/abap-guardian-runpod:0.4.0-runpod3 `
+  --tag <DOCKER_USER>/abap-guardian-runpod:0.4.0-runpod4 `
   .
 ```
 
 This must finish successfully. Then push the immutable version tag:
 
 ```powershell
-docker push <DOCKER_USER>/abap-guardian-runpod:0.4.0-runpod3
+docker push <DOCKER_USER>/abap-guardian-runpod:0.4.0-runpod4
 ```
 
 Do not rely on a floating `latest` tag for the production Pod. A versioned tag
@@ -721,7 +727,7 @@ Open **Templates → New Template** and configure:
 | Setting | Value |
 | --- | --- |
 | Name | `ABAP Guardian Ollama RAG 0.4.0` |
-| Container image | `<DOCKER_USER>/abap-guardian-runpod:0.4.0-runpod3` |
+| Container image | `<DOCKER_USER>/abap-guardian-runpod:0.4.0-runpod4` |
 | Registry credentials | `dockerhub-abap-guardian` |
 | Container disk | `20 GB` |
 | Volume mount path | `/workspace` |

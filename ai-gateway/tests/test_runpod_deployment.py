@@ -40,4 +40,7 @@ def test_container_exposes_only_the_two_application_http_ports() -> None:
     dockerfile = read_runpod_file("Dockerfile")
 
     assert "rm -f /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*.conf" in dockerfile
+    assert "s/listen 8001;/listen 127.0.0.1:18001;/" in dockerfile
+    assert "include /etc/nginx/conf.d/*.conf;" in dockerfile
+    assert "! grep -Eq 'listen[[:space:]]+8001;'" in dockerfile
     assert "EXPOSE 8001 8002" in dockerfile

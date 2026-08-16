@@ -31,6 +31,7 @@ from .schemas import (
     SuggestFixRequest,
     SuggestFixResponse,
 )
+from .security import enforce_api_security
 
 # Deliberately quiet: uvicorn access logs would contain only paths, never
 # bodies, but we also avoid app-level logging of any request content.
@@ -51,17 +52,32 @@ app = FastAPI(
 )
 
 
+@app.middleware("http")
+async def secure_public_api(request, call_next):
+    rejection = enforce_api_security(request)
+    if rejection is not None:
+        rejection.headers["Cache-Control"] = "no-store"
+        return rejection
+    response = await call_next(request)
+    if request.url.path.startswith("/api/v1/"):
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 @app.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
     llm_ok = await llm_client.is_available()
     analyzer_ok = analyzer.analyzer_available()
-    status = "ok" if analyzer_ok else "degraded"
+    auth_configured = bool(settings.api_token)
+    status = "ok" if analyzer_ok and (not settings.require_api_auth or auth_configured) else "degraded"
     return HealthResponse(
         status=status,
         llmAvailable=llm_ok,
         llmProvider=llm_client.provider_name(),
         ollamaAvailable=llm_ok and llm_client.provider_name() == "ollama",
         analyzerAvailable=analyzer_ok,
+        authenticationRequired=settings.require_api_auth or auth_configured,
+        authenticationConfigured=auth_configured,
         version=__version__,
     )
 

@@ -23,9 +23,9 @@ eclipse-plugin).
   the deterministic analyzer via stdin only (never argv or temp files).
 - The Eclipse plug-in never auto-saves, never activates objects, and applies
   suggested edits only after explicit confirmation, as a single undoable edit.
-- Credentials (only needed if you explicitly enable an external provider)
-  belong exclusively in Eclipse secure storage; nothing is written to plain
-  preferences or logs.
+- The dedicated GPU deployment requires a Guardian API bearer token, mounts it
+  as a Docker secret and keeps Ollama/Chroma private. Eclipse stores the token
+  in Equinox Secure Storage; nothing is written to plain preferences or logs.
 
 ## Scope Notes
 

@@ -19,6 +19,17 @@
    `gateway/redaction.py` masks likely personal data (emails, IBANs,
    8-digit personnel numbers, phone numbers) and credentials (passwords,
    bearer tokens).
+5. **Local RAG option.** With `LLM_PROVIDER=abap-agent`, Guardian and the ABAP
+   Expert RAG service run on the same local Docker network. No OpenAI key is
+   configured and ports in the supplied Compose example bind only to
+   `127.0.0.1`. The bounded redacted prompt is processed locally by Chroma and
+   Ollama.
+6. **Dedicated GPU boundary.** In the VM deployment, source crosses the
+   network only over HTTPS to the selected VM and is processed in memory.
+   Ollama and Chroma are not published, and Caddy mediates any optional ABAP
+   Expert browser access with separate authentication. The API token controls
+   Eclipse access but does not replace approval of the provider, region,
+   administrators, backup policy and organizational retention controls.
 
 ## Privacy rules are context-aware
 
@@ -63,6 +74,8 @@ values below 1.0 — a human decides whether a real problem exists.
   context** is checked. Chat history lives in memory in the Eclipse view and is
   not persisted by the plug-in.
 - OpenAI Responses requests remain stateless with `store: false`.
+- Local ABAP Expert requests use its in-memory NDJSON chat endpoint. Guardian
+  does not persist prompts or streamed replies.
 
 ## Suppression accountability
 

@@ -19,7 +19,7 @@ _Last updated: 2026-08-07_
 | Hosted deployment | ✅ repository-ready | Docker packages Java 21 analyzer + Python gateway; Render requires a server-side `OPENAI_API_KEY`. Live deployment remains an operator step. |
 | rules/ YAML configs | ✅ complete | performance/security/privacy/policy. |
 | samples/ | ✅ complete | Canonical bad example (verified findings via engine test) + corrected version. |
-| eclipse-plugin 0.3.0 | 🟡 implemented, CI pending | Copilot/Welcome views, docked perspective contribution, chat/context actions, debounced live/on-save analysis, status, editor annotations, Description/Suggestion columns and preview-only corrections. Local XML validation passes; Tycho compile and GUI smoke test remain. |
+| eclipse-plugin 0.4.0 | 🟡 implemented, CI pending | Copilot/Welcome views, remote authenticated GPU service support, encrypted token storage, chat/context actions, debounced live/on-save analysis, status, editor annotations, Description/Suggestion columns and preview-only corrections. |
 | eclipse-feature / eclipse-updatesite | ✅ complete | feature.xml + category.xml + Tycho p2 repository config; `-Peclipse` build produces the p2 update-site ZIP. Install verified headlessly: `eclipse -application org.eclipse.equinox.p2.director -repository jar:file:<zip>!/ -installIU com.abapguardian.eclipse.feature.feature.group` → "Overall install request is satisfiable", plugin + feature landed in `plugins/`/`features/`. |
 | CI: PR workflow | ✅ complete | Java + Python tests, ruff lint, gitleaks, pip-audit, Tycho build. |
 | CI: release workflow | ✅ complete | Checksums, update-site ZIP, GitHub Pages p2, generated release notes. |

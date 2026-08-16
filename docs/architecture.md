@@ -9,7 +9,9 @@ flowchart LR
 ```
 
 `Dockerfile` packages the gateway and Java analyzer into one service. Local
-development may select Ollama instead of the hosted LLM.
+development may select Ollama instead of the hosted LLM. It may also select
+the local ABAP Expert RAG provider, which delegates generation and retrieval
+to the user's Chroma/PDF/Word service while preserving Guardian's API.
 
 ## analyzer-core (Java 21, zero Eclipse deps)
 
@@ -66,6 +68,24 @@ Invariants:
    Retrieved snippets are injected into chat/enhancement prompts *before* the
    redaction layer, so they are masked like everything else. No bundled
    knowledge is uploaded to a separate indexing service.
+7. `LLM_PROVIDER=abap-agent` uses `gateway/abap_agent_client.py` to consume
+   the local ABAP Expert `/api/chat` NDJSON stream. The ABAP Expert service
+   performs Chroma retrieval and local Ollama generation; Guardian aggregates
+   token events, sanitizes failures and continues to own deterministic result
+   positions and response schemas.
+8. Public deployments protect every `/api/v1/*` route with a bearer token,
+   request-size bound and optional per-client/token rate limit. `/health`
+   remains public and reports whether authentication is required/configured.
+
+## Dedicated GPU VM topology
+
+`deploy/gpu-vm/compose.yaml` adds Caddy, the existing ABAP Expert container and
+Ollama. Caddy is the only service with published ports. Guardian, ABAP Expert,
+Chroma and Ollama share an internal Docker network; Ollama alone also has
+outbound access so it can download models. Caddy protects the optional browser
+chat separately from the bearer-authenticated Eclipse API. Persistent volumes
+retain Ollama models and TLS state, while the private agent directory retains
+knowledge and the vector database.
 
 ## Eclipse plug-in
 
@@ -86,6 +106,9 @@ Invariants:
   never saves or activates objects.
 - The default proof-of-concept service URL is HTTPS and can be replaced with
   an organization-owned deployment. Provider credentials stay on the server.
+- The Guardian deployment token is stored in Eclipse Secure Storage and sent
+  as an HTTPS `Authorization: Bearer` header. Test Connection checks both the
+  public health endpoint and an authenticated API endpoint.
 
 ## Wire format
 

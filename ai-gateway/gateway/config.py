@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
 
 
 def _int_env(name: str, default: int) -> int:
@@ -18,11 +19,48 @@ def _int_env(name: str, default: int) -> int:
         return default
 
 
+def _bool_env(name: str, default: bool) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _secret_env(name: str) -> str:
+    """Read a secret from NAME_FILE first, then NAME.
+
+    Docker Compose mounts production secrets as files. Direct environment
+    variables remain available for local development and test deployments.
+    """
+    secret_file = os.environ.get(f"{name}_FILE", "").strip()
+    if secret_file:
+        try:
+            return Path(secret_file).read_text(encoding="utf-8").strip()
+        except OSError:
+            return ""
+    return os.environ.get(name, "").strip()
+
+
 @dataclass
 class Settings:
-    # AI provider. "ollama" keeps development fully local; "openai" uses
-    # the hosted Responses API and additionally requires the explicit
-    # ALLOW_EXTERNAL_PROVIDERS opt-in below.
+    # Public API authentication. Local development remains backwards
+    # compatible when both values are unset. Production deployments set
+    # REQUIRE_API_AUTH=true and provide GUARDIAN_API_TOKEN_FILE.
+    api_token: str = field(default_factory=lambda: _secret_env("GUARDIAN_API_TOKEN"))
+    require_api_auth: bool = field(
+        default_factory=lambda: _bool_env("REQUIRE_API_AUTH", False)
+    )
+    rate_limit_per_minute: int = field(
+        default_factory=lambda: _int_env("RATE_LIMIT_PER_MINUTE", 0)
+    )
+    max_request_body_bytes: int = field(
+        default_factory=lambda: _int_env("MAX_REQUEST_BODY_BYTES", 1_048_576)
+    )
+
+    # AI provider. "ollama" talks directly to a local Ollama server;
+    # "abap-agent" delegates to the user's local streaming RAG service;
+    # "openai" uses the hosted Responses API and additionally requires the
+    # explicit ALLOW_EXTERNAL_PROVIDERS opt-in below.
     llm_provider: str = field(
         default_factory=lambda: os.environ.get("LLM_PROVIDER", "ollama").lower()
     )
@@ -33,6 +71,16 @@ class Settings:
     )
     ollama_model: str = field(
         default_factory=lambda: os.environ.get("OLLAMA_MODEL", "gemma4:e4b")
+    )
+
+    # Optional local ABAP Expert RAG service. This provider retains the
+    # user's Chroma/PDF/Word retrieval pipeline instead of bypassing it and
+    # calling Ollama directly.
+    abap_agent_base_url: str = field(
+        default_factory=lambda: os.environ.get("ABAP_AGENT_BASE_URL", "http://localhost:8000")
+    )
+    abap_agent_model: str = field(
+        default_factory=lambda: os.environ.get("ABAP_AGENT_MODEL", "abap-expert")
     )
 
     # Hosted OpenAI Responses API. The API key is server-side only and is

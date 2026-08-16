@@ -1,0 +1,158 @@
+name: abap-guardian-cloud
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      GUARDIAN_DOMAIN: ${GUARDIAN_DOMAIN:?Set GUARDIAN_DOMAIN in .env}
+      CHAT_DOMAIN: ${CHAT_DOMAIN:?Set CHAT_DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    secrets:
+      - chat_auth
+    depends_on:
+      abap-guardian:
+        condition: service_healthy
+    networks:
+      - edge
+      - backend
+
+  abap-guardian:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      LLM_PROVIDER: abap-agent
+      ABAP_AGENT_BASE_URL: http://abap-ai:8000
+      ABAP_AGENT_MODEL: ${CHAT_MODEL:-abap-expert}
+      ALLOW_EXTERNAL_PROVIDERS: "false"
+      REDACTION_ENABLED: "true"
+      BUNDLED_KNOWLEDGE_PATH: ""
+      REQUIRE_API_AUTH: "true"
+      GUARDIAN_API_TOKEN_FILE: /run/secrets/guardian_api_token
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-60}
+      MAX_SOURCE_LENGTH: ${MAX_SOURCE_LENGTH:-200000}
+      MAX_REQUEST_BODY_BYTES: ${MAX_REQUEST_BODY_BYTES:-1048576}
+      REQUEST_TIMEOUT_SECONDS: ${REQUEST_TIMEOUT_SECONDS:-180}
+      AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-180}
+    secrets:
+      - guardian_api_token
+    depends_on:
+      abap-ai:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import json, urllib.request;
+          data=json.load(urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5));
+          assert data['analyzerAvailable'] and data['authenticationConfigured']
+      interval: 20s
+      timeout: 8s
+      retries: 10
+      start_period: 30s
+    networks:
+      - backend
+
+  abap-ai:
+    build:
+      context: ${ABAP_AGENT_DIR:?Set ABAP_AGENT_DIR in .env}
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      CHAT_MODEL: ${CHAT_MODEL:-abap-expert}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-embeddinggemma}
+      KNOWLEDGE_DIR: /app/knowledge
+      DATABASE_DIR: /app/vector_db
+      CORS_ORIGINS: ""
+    volumes:
+      - ${ABAP_AGENT_DIR}/knowledge:/app/knowledge
+      - ${ABAP_AGENT_DIR}/vector_db:/app/vector_db
+    depends_on:
+      model-loader:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import json, urllib.request;
+          data=json.load(urllib.request.urlopen('http://127.0.0.1:8000/api/status', timeout=8));
+          assert data['chat_model_available'] and data['embedding_model_available']
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 30s
+    networks:
+      - backend
+
+  model-loader:
+    image: ollama/ollama:latest
+    restart: "no"
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      CHAT_MODEL: ${CHAT_MODEL:-abap-expert}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-embeddinggemma}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        until ollama list >/dev/null 2>&1; do sleep 2; done;
+        ollama pull "$$EMBEDDING_MODEL";
+        ollama create "$$CHAT_MODEL" -f /models/Modelfile
+    volumes:
+      - ${ABAP_AGENT_DIR}/Modelfile:/models/Modelfile:ro
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      - backend
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    networks:
+      - edge
+      - backend
+
+secrets:
+  guardian_api_token:
+    file: ./secrets/guardian_api_token
+  chat_auth:
+    file: ./secrets/chat_auth
+
+volumes:
+  ollama_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  edge:
+  backend:
+    internal: true

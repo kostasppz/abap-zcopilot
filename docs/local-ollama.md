@@ -52,6 +52,13 @@ OLLAMA_MODEL=qwen2.5-coder:7b uvicorn gateway.main:app --port 8000
 Everything still works: the gateway returns deterministic findings and marks
 `aiEnhanced: false`. `/explain` and `/suggest-fix` return HTTP 503.
 
+## Existing ABAP Expert RAG service
+
+If Ollama is already used through the local ABAP Expert service with Chroma,
+PDF and Word knowledge, do not bypass that retrieval pipeline. Configure
+Guardian with `LLM_PROVIDER=abap-agent` and follow
+[`local-abap-agent.md`](local-abap-agent.md).
+
 ## External providers (opt-in, discouraged)
 
 External AI providers are disabled by default. If you explicitly set

@@ -126,4 +126,6 @@ class HealthResponse(BaseModel):
     # Kept for backward compatibility with existing local installations.
     ollamaAvailable: bool
     analyzerAvailable: bool
+    authenticationRequired: bool = False
+    authenticationConfigured: bool = False
     version: str

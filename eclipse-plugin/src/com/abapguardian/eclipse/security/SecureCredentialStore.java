@@ -7,8 +7,8 @@ import org.eclipse.equinox.security.storage.StorageException;
 import java.util.Optional;
 
 /**
- * Abstraction over Eclipse secure storage for any future credentials
- * (e.g. an API key for an explicitly-enabled external AI provider).
+ * Abstraction over Eclipse secure storage for the Guardian deployment token
+ * and any future credentials.
  *
  * <p>Credentials are NEVER written to normal preferences, workspace
  * metadata or logs. Hosted provider credentials remain on the server and
@@ -17,6 +17,7 @@ import java.util.Optional;
 public class SecureCredentialStore {
 
     private static final String NODE = "com.abapguardian.eclipse";
+    public static final String KEY_GUARDIAN_API_TOKEN = "guardianApiToken";
 
     private final ISecurePreferences node;
 
@@ -42,5 +43,17 @@ public class SecureCredentialStore {
 
     public void remove(String key) {
         node.remove(key);
+    }
+
+    public Optional<String> getGuardianApiToken() {
+        return get(KEY_GUARDIAN_API_TOKEN).filter(value -> !value.isBlank());
+    }
+
+    public void putGuardianApiToken(String value) throws StorageException {
+        if (value == null || value.isBlank()) {
+            remove(KEY_GUARDIAN_API_TOKEN);
+        } else {
+            put(KEY_GUARDIAN_API_TOKEN, value.trim());
+        }
     }
 }

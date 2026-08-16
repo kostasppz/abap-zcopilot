@@ -11,8 +11,9 @@ the analyzer and model integration run on a managed HTTPS service.
 ABAP Guardian analyzes ABAP source code for **performance**, **security**
 and **privacy** problems using 34 deterministic, tokenizer/statement-model
 based rules with accurate line and column positions. An optional AI gateway
-(FastAPI plus a hosted OpenAI Responses API model or local Ollama) enriches
-findings with better explanations and suggested fixes.
+(FastAPI plus a hosted OpenAI Responses API model, direct local Ollama, or the
+local ABAP Expert Chroma RAG service) enriches findings with better
+explanations and suggested fixes.
 
 An Eclipse plug-in integrates the analysis into ABAP Development Tools with
 a docked Copilot chat, live/on-save findings, editor annotations, contextual
@@ -38,6 +39,8 @@ quick actions and compare-based fix previews with explicit confirmation.
 | `samples/` | Good and bad ABAP examples. |
 | `docs/` | Architecture, rule docs, privacy/security model, guides. |
 | `Dockerfile`, `render.yaml` | One-container hosted deployment configuration. |
+| `deploy/gpu-vm/` | Authenticated HTTPS deployment for the existing Ollama/RAG stack. |
+| `deploy/runpod/` | Single-container RunPod image for Guardian, ABAP Expert and Ollama. |
 
 ## Eclipse user: install and analyze
 
@@ -76,10 +79,33 @@ remain available regardless of these switches.
 After installation and after every plug-in update, a Welcome/What's New view
 opens once with privacy information and shortcuts to Copilot and Settings.
 
-The plug-in is configured for `https://abap-zcopilot.onrender.com`. A project
-owner must deploy that service once before the install-only flow works.
+The plug-in is configured for `https://abap-zcopilot.onrender.com` by default.
+For a private GPU deployment, users replace it with the organization's
+Guardian HTTPS URL and securely store the deployment token in Preferences.
 
-## Project owner: deploy the hosted service once
+## Recommended: dedicated GPU VM with the existing ABAP Expert
+
+The production Compose deployment runs Caddy, Guardian, the existing ABAP
+Expert Chroma service and Ollama on one NVIDIA GPU VM. Only HTTPS is public;
+the model and RAG services stay on an isolated Docker network. Guardian API
+requests require a bearer token, rate limiting is enabled, and the Eclipse
+plug-in stores that token in Eclipse Secure Storage. A second HTTPS hostname
+can expose the existing ABAP Expert browser chat behind separate Caddy Basic
+Authentication.
+
+Follow the full tutorial from VM sizing and DNS through model loading,
+verification, Eclipse setup, updates, backups and token rotation:
+[`docs/dedicated-gpu-vm.md`](docs/dedicated-gpu-vm.md).
+
+### RunPod deployment
+
+RunPod avoids the AWS EC2 GPU quota workflow and runs the stack in one custom
+Pod image. The agent source, knowledge, Chroma database and Ollama model data
+remain on a persistent network volume. Follow the complete Docker Hub, RunPod,
+security, storage and Eclipse walkthrough in
+[`docs/runpod.md`](docs/runpod.md).
+
+## Alternative proof of concept: Render with hosted OpenAI
 
 The included Dockerfile builds the Java analyzer and Python gateway into one
 container. `render.yaml` configures a proof-of-concept Render deployment.
@@ -100,10 +126,10 @@ relevant passages from the `docs/` and `rules/` content bundled in the Docker
 image; no external vector database is required. Override
 `OPENAI_MODEL` in the hosting environment when required.
 
-> **Proof-of-concept warning:** the public endpoint has no end-user
-> authentication and uses the project owner's model quota. Use it only for
-> controlled testing. Before production use, add organization authentication,
-> rate limiting, audit controls and an approved private deployment.
+> **Proof-of-concept warning:** the Render blueprint does not configure an
+> end-user token and uses the project owner's model quota. Use it only for
+> controlled testing. The dedicated GPU VM deployment enables authentication
+> and rate limiting.
 
 ## Local development and self-hosting
 
@@ -118,9 +144,14 @@ Run the gateway locally with Ollama:
 ```bash
 cd ai-gateway
 pip install -e .
-export ANALYZER_JAR=../analyzer-core/target/analyzer-core-0.3.0-SNAPSHOT.jar
+export ANALYZER_JAR=../analyzer-core/target/analyzer-core-0.4.0-SNAPSHOT.jar
 uvicorn gateway.main:app --port 8000
 ```
+
+To reuse an existing local ABAP Expert agent with PDF/Word knowledge, Chroma
+retrieval and Ollama, select `LLM_PROVIDER=abap-agent`. The recommended
+three-container setup and Eclipse configuration are documented in
+[`docs/local-abap-agent.md`](docs/local-abap-agent.md).
 
 Build the Eclipse update site:
 
@@ -177,6 +208,8 @@ Details: [`docs/privacy-model.md`](docs/privacy-model.md),
 - [Project specification](docs/project-specification.md)
 - [Rules reference](docs/rules.md)
 - [Local Ollama setup](docs/local-ollama.md)
+- [Local ABAP Expert RAG integration](docs/local-abap-agent.md)
+- [Dedicated GPU VM and Eclipse tutorial](docs/dedicated-gpu-vm.md)
 - [Eclipse development](docs/eclipse-development.md)
 - [Releasing](docs/releasing.md)
 - [Troubleshooting](docs/troubleshooting.md)

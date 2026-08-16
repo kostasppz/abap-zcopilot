@@ -6,7 +6,7 @@
   <parent>
     <groupId>com.abapguardian</groupId>
     <artifactId>abap-guardian-parent</artifactId>
-    <version>0.3.0-SNAPSHOT</version>
+    <version>0.4.0-SNAPSHOT</version>
   </parent>
   <artifactId>com.abapguardian.eclipse.plugin</artifactId>
   <packaging>eclipse-plugin</packaging>

@@ -7,7 +7,7 @@ Set `ANALYZER_JAR` to the built jar and ensure `java` is on PATH:
 
 ```bash
 mvn -pl analyzer-core clean package
-export ANALYZER_JAR=$PWD/analyzer-core/target/analyzer-core-0.3.0-SNAPSHOT.jar
+export ANALYZER_JAR=$PWD/analyzer-core/target/analyzer-core-0.4.0-SNAPSHOT.jar
 ```
 
 **`/analyze` returns 503**

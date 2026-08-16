@@ -1,0 +1,8 @@
+.git
+.github
+**/.venv
+**/__pycache__
+**/*.pyc
+deploy/gpu-vm/secrets
+*.zip
+*.tar.gz

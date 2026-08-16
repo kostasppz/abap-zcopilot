@@ -16,8 +16,10 @@ Releases are driven by tags and the `release.yml` workflow.
    editor context menu, live debounce/on-save opt-ins, annotation navigation,
    Welcome-once behavior, and suggested-fix compare confirmation.
 5. Verify the hosted service URL in
-   `GuardianPreferences.DEFAULT_SERVICE_URL` and deploy `render.yaml` if the
-   service is not already live. Store `OPENAI_API_KEY` only in the host.
+   `GuardianPreferences.DEFAULT_SERVICE_URL`. For a dedicated GPU deployment,
+   verify `docs/dedicated-gpu-vm.md` and keep `GUARDIAN_API_TOKEN`, models and
+   private knowledge outside Git. For Render, store `OPENAI_API_KEY` only in
+   the host.
 6. Tag and push:
 
    ```bash
@@ -36,8 +38,8 @@ Releases are driven by tags and the `release.yml` workflow.
   `https://<org>.github.io/<repo>/` as an update-site URL.
 
 The release workflow publishes the Eclipse update site; it does not host the
-FastAPI runtime. Render (or an organization-owned container platform) builds
-and runs the root `Dockerfile` separately.
+FastAPI runtime. Render or the dedicated GPU VM Compose deployment builds and
+runs the root `Dockerfile` separately.
 
 No secrets are stored in the repository; the workflow uses the ephemeral
 `GITHUB_TOKEN` only.

@@ -39,13 +39,13 @@ public class WelcomeView extends ViewPart {
         Label whatsNew = new Label(parent, SWT.WRAP);
         whatsNew.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
         whatsNew.setText(
-                "What's new in 0.3.0\n\n"
-                + "• Docked Copilot chat next to Problems\n"
-                + "• Repository-aware ABAP answers\n"
-                + "• Optional live and on-save analysis\n"
-                + "• Editor markers and quick actions\n"
-                + "• Description and suggested-code columns\n"
-                + "• Side-by-side fix review before any edit");
+                "What's new in 0.4.0\n\n"
+                + "• Dedicated NVIDIA GPU VM deployment\n"
+                + "• HTTPS bearer-token authentication\n"
+                + "• Encrypted API-token storage in Eclipse\n"
+                + "• Remote ABAP Expert, Chroma and Ollama integration\n"
+                + "• Request-size and rate-limit protection\n"
+                + "• Complete deployment and Eclipse tutorial");
 
         Composite actions = new Composite(parent, SWT.NONE);
         actions.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));

@@ -5,6 +5,7 @@ import com.abapguardian.eclipse.api.GuardianChatMessage;
 import com.abapguardian.eclipse.api.GuardianChatResponse;
 import com.abapguardian.eclipse.api.GuardianFinding;
 import com.abapguardian.eclipse.preferences.GuardianPreferences;
+import com.abapguardian.eclipse.security.SecureCredentialStore;
 
 import java.io.IOException;
 import java.net.URI;
@@ -26,29 +27,44 @@ public class GatewayClient {
     private final HttpClient http;
     private final String baseUrl;
     private final Duration timeout;
+    private final String apiToken;
 
     public GatewayClient() {
-        this(GuardianPreferences.getServiceUrl(), GuardianPreferences.getTimeoutSeconds());
+        this(GuardianPreferences.getServiceUrl(), GuardianPreferences.getTimeoutSeconds(),
+                new SecureCredentialStore().getGuardianApiToken().orElse(""));
     }
 
     public GatewayClient(String baseUrl, int timeoutSeconds) {
+        this(baseUrl, timeoutSeconds, "");
+    }
+
+    public GatewayClient(String baseUrl, int timeoutSeconds, String apiToken) {
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
         this.timeout = Duration.ofSeconds(timeoutSeconds);
+        this.apiToken = apiToken == null ? "" : apiToken.trim();
         this.http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     }
 
-    /** True when GET /health answers with HTTP 200. */
+    /** True when health and an authenticated API probe both answer with HTTP 200. */
     public boolean isHealthy() {
         try {
-            HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + "/health"))
-                    .timeout(Duration.ofSeconds(5)).GET().build();
-            return http.send(request, HttpResponse.BodyHandlers.discarding()).statusCode() == 200;
+            if (sendProbe("/health") != 200) {
+                return false;
+            }
+            return sendProbe("/api/v1/models") == 200;
         } catch (IOException | InterruptedException e) {
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
             return false;
         }
+    }
+
+    private int sendProbe(String path) throws IOException, InterruptedException {
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(baseUrl + path))
+                .timeout(Duration.ofSeconds(10)).GET();
+        addAuthentication(builder);
+        return http.send(builder.build(), HttpResponse.BodyHandlers.discarding()).statusCode();
     }
 
     public GuardianAnalysisResult analyze(String source, String objectName, String objectType,
@@ -100,13 +116,21 @@ public class GatewayClient {
 
     private JsonLite.Obj post(String path, JsonLite.Obj payload) throws GatewayException {
         try {
-            HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + path))
+            HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(baseUrl + path))
                     .timeout(timeout)
                     .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(payload.toJson(), StandardCharsets.UTF_8))
-                    .build();
+                    .POST(HttpRequest.BodyPublishers.ofString(payload.toJson(), StandardCharsets.UTF_8));
+            addAuthentication(builder);
+            HttpRequest request = builder.build();
             HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200) {
+                if (response.statusCode() == 401) {
+                    throw new GatewayException(
+                            "Guardian API token is missing or invalid. Update it in ABAP Guardian Preferences.");
+                }
+                if (response.statusCode() == 429) {
+                    throw new GatewayException("Guardian request limit reached. Please wait and try again.");
+                }
                 throw new GatewayException("Gateway returned HTTP " + response.statusCode());
             }
             return JsonLite.parseObject(response.body());
@@ -115,6 +139,12 @@ public class GatewayClient {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new GatewayException("Analysis was interrupted", e);
+        }
+    }
+
+    private void addAuthentication(HttpRequest.Builder builder) {
+        if (!apiToken.isBlank()) {
+            builder.header("Authorization", "Bearer " + apiToken);
         }
     }
 

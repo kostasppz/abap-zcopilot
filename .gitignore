@@ -9,3 +9,5 @@ __pycache__/
 .ruff_cache/
 dist/
 .DS_Store
+deploy/gpu-vm/.env
+deploy/gpu-vm/secrets/

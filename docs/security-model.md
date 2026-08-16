@@ -4,11 +4,13 @@
 
 | Component | Exposure | Mitigations |
 | --- | --- | --- |
-| ai-gateway | Public HTTPS in proof of concept | No source retention; configurable limits (`MAX_SOURCE_LENGTH`, timeouts, `MAX_FINDINGS`, `MAX_TOKENS`). Add organization authentication and rate limiting before production. |
+| ai-gateway | Public HTTPS | No source retention; bearer-token authentication, request/rate limits and configurable analysis limits. |
 | analyzer-core | subprocess | Source via stdin only; JSON out; no network access. |
 | Eclipse plug-in | IDE | Read-only analysis; edits only after explicit confirmation; single-undo; never saves/activates; secure storage for any credentials. |
 | Hosted LLM | Outbound HTTPS | Server-side API key, explicit opt-in, redacted bounded prompts, `store: false`, schema validation and timeouts. |
 | Ollama (optional) | localhost HTTP | Local development model; schema-validated JSON responses; timeouts. |
+| ABAP Expert RAG (optional) | Local Docker network | Loopback-only published ports, Chroma/PDF/Word retrieval, bounded prompts, NDJSON parsing, sanitized errors and timeouts. |
+| Dedicated GPU VM | Caddy on 80/443 only | Automatic TLS; Guardian API bearer token; separate Basic Auth for the optional browser chat; Ollama/Chroma remain private. |
 
 ## Gateway hardening
 
@@ -22,6 +24,13 @@
   messages contain no source content.
 - **Server-side secrets.** `OPENAI_API_KEY` is supplied by the hosting secret
   store and is never committed or distributed in the Eclipse plug-in.
+- **Client authentication.** Production Compose mounts
+  `GUARDIAN_API_TOKEN_FILE` as a Docker secret. Every `/api/v1/*` request uses
+  a constant-time bearer-token check; authentication fails closed when the
+  required secret cannot be loaded.
+- **Abuse limits.** The gateway rejects oversized requests before parsing and
+  can enforce a bounded per-client/token request rate. Organization-scale
+  deployments should add centralized identity, audit and monitoring controls.
 
 The included public Render configuration is for a controlled proof of
 concept. It deliberately supports install-only clients but therefore spends
@@ -40,8 +49,8 @@ authorization, per-user quotas, abuse protection and organizational approval.
   has a separate opt-in, and stale debounced jobs cannot update the editor.
 - Copilot history remains in memory only. The context checkbox controls
   whether active source/selection is included in a request.
-- `SecureCredentialStore` wraps Eclipse secure storage (encrypted) for any
-  future credentials; nothing secret goes into plain preferences.
+- `SecureCredentialStore` stores the Guardian API token in Eclipse Equinox
+  Secure Storage; nothing secret goes into plain preferences.
 
 ## Honest security findings
 

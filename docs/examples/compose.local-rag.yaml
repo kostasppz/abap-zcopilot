@@ -1,0 +1,63 @@
+services:
+  abap-ai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: abap-ai
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      CHAT_MODEL: abap-expert
+      EMBEDDING_MODEL: embeddinggemma
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./knowledge:/app/knowledge
+      - ./vector_db:/app/vector_db
+    depends_on:
+      - ollama
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  abap-guardian:
+    build:
+      # Clone abap-zcopilot beside the existing abap-agent directory.
+      context: ../abap-zcopilot
+      dockerfile: Dockerfile
+    container_name: abap-guardian
+    environment:
+      LLM_PROVIDER: abap-agent
+      ABAP_AGENT_BASE_URL: http://abap-ai:8000
+      ABAP_AGENT_MODEL: abap-expert
+      ALLOW_EXTERNAL_PROVIDERS: "false"
+      REDACTION_ENABLED: "true"
+      # ABAP Expert supplies Chroma/PDF/Word RAG. Disable Guardian's extra
+      # lexical retrieval so the model does not receive duplicate context.
+      BUNDLED_KNOWLEDGE_PATH: ""
+    ports:
+      - "127.0.0.1:8001:8000"
+    depends_on:
+      abap-ai:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: abap-ollama
+    volumes:
+      - ollama_data:/root/.ollama
+      - ./Modelfile:/models/Modelfile:ro
+    restart: unless-stopped
+
+volumes:
+  ollama_data:

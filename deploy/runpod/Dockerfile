@@ -15,6 +15,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+        apache2-utils \
         ca-certificates \
         curl \
         openjdk-21-jre-headless \
@@ -55,14 +56,26 @@ COPY rules /opt/guardian/knowledge/rules
 COPY --from=analyzer-build /build/analyzer-core/target/analyzer-core-*.jar /opt/guardian/analyzer.jar
 
 COPY deploy/runpod/run.sh /opt/runpod/run.sh
+COPY deploy/runpod/start-runpod-base.sh /opt/runpod/start-runpod-base.sh
 COPY deploy/runpod/start-ollama.sh /opt/runpod/start-ollama.sh
 COPY deploy/runpod/start-agent.sh /opt/runpod/start-agent.sh
 COPY deploy/runpod/start-guardian.sh /opt/runpod/start-guardian.sh
 COPY deploy/runpod/supervisord.conf /opt/runpod/supervisord.conf
+
+# The RunPod base image ships a default Nginx site on port 8001. Guardian owns
+# that port, so replace every default site with the authenticated Agent proxy
+# installed below. The proxy listens on 8002 and keeps Agent itself on loopback.
+RUN rm -f /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*.conf
+COPY deploy/runpod/nginx-agent-web.conf /etc/nginx/conf.d/abap-agent-web.conf
+RUN install -d -m 0700 /run/abap-guardian \
+    && : > /run/abap-guardian/agent-web.htpasswd \
+    && nginx -t \
+    && rm -rf /run/abap-guardian
+
 # Windows Git clients can still provide CRLF files through an existing
 # checkout. Normalize them in the image as a second line of defense.
 RUN sed -i 's/\r$//' /opt/runpod/*.sh \
     && chmod 0755 /opt/runpod/*.sh
 
-EXPOSE 8001
+EXPOSE 8001 8002
 CMD ["/opt/runpod/run.sh"]

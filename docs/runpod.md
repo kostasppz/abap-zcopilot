@@ -13,6 +13,7 @@ The deployment retains:
 - the persistent Chroma vector database;
 - ABAP Guardian's deterministic analyzer;
 - bearer-token authentication for Eclipse;
+- a separately password-protected browser chat;
 - redaction, size limits and rate limiting;
 - Eclipse Secure Storage for the API token.
 
@@ -36,6 +37,11 @@ Eclipse / ABAP Development Tools
   -> HTTPS + Guardian bearer token
   -> https://<POD_ID>-8001.proxy.runpod.net
   -> ABAP Guardian gateway on port 8001
+
+Browser
+  -> HTTPS + Basic Authentication
+  -> https://<POD_ID>-8002.proxy.runpod.net
+  -> Nginx on port 8002
   -> ABAP Expert RAG service on 127.0.0.1:8000
   -> Ollama on 127.0.0.1:11434
   -> NVIDIA GPU
@@ -47,9 +53,10 @@ Persistent network volume mounted at /workspace
   -> logs and backups
 ```
 
-Only Guardian port `8001` is exposed through RunPod's HTTPS proxy. The ABAP
-Expert service and Ollama are bound to loopback and are not publicly
-accessible. SSH is exposed temporarily for administration and file transfer.
+Guardian port `8001` and the password-protected browser proxy on `8002` are
+exposed through RunPod's HTTPS proxy. The ABAP Expert service itself and
+Ollama remain bound to loopback. SSH is exposed temporarily for administration
+and file transfer.
 
 RunPod's HTTP proxy URL follows the format
 `https://POD_ID-INTERNAL_PORT.proxy.runpod.net`. The proxy is HTTPS-only and
@@ -224,6 +231,8 @@ abap-zcopilot/
     runpod/
       Dockerfile
       run.sh
+      start-runpod-base.sh
+      nginx-agent-web.conf
       start-ollama.sh
       start-agent.sh
       start-guardian.sh
@@ -251,6 +260,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+        apache2-utils \
         ca-certificates \
         curl \
         openjdk-21-jre-headless \
@@ -291,13 +301,25 @@ COPY rules /opt/guardian/knowledge/rules
 COPY --from=analyzer-build /build/analyzer-core/target/analyzer-core-*.jar /opt/guardian/analyzer.jar
 
 COPY deploy/runpod/run.sh /opt/runpod/run.sh
+COPY deploy/runpod/start-runpod-base.sh /opt/runpod/start-runpod-base.sh
 COPY deploy/runpod/start-ollama.sh /opt/runpod/start-ollama.sh
 COPY deploy/runpod/start-agent.sh /opt/runpod/start-agent.sh
 COPY deploy/runpod/start-guardian.sh /opt/runpod/start-guardian.sh
 COPY deploy/runpod/supervisord.conf /opt/runpod/supervisord.conf
-RUN chmod 0755 /opt/runpod/*.sh
 
-EXPOSE 8001
+# Remove the base image's port-8001 Nginx site. Guardian owns 8001; the
+# authenticated Agent browser proxy owns 8002.
+RUN rm -f /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*.conf
+COPY deploy/runpod/nginx-agent-web.conf /etc/nginx/conf.d/abap-agent-web.conf
+RUN install -d -m 0700 /run/abap-guardian \
+    && : > /run/abap-guardian/agent-web.htpasswd \
+    && nginx -t \
+    && rm -rf /run/abap-guardian
+
+RUN sed -i 's/\r$//' /opt/runpod/*.sh \
+    && chmod 0755 /opt/runpod/*.sh
+
+EXPOSE 8001 8002
 CMD ["/opt/runpod/run.sh"]
 ```
 
@@ -319,7 +341,97 @@ mkdir -p \
 exec /usr/bin/supervisord -n -c /opt/runpod/supervisord.conf
 ```
 
-### 8.3 `deploy/runpod/start-ollama.sh`
+### 8.3 `deploy/runpod/start-runpod-base.sh`
+
+This wrapper creates a bcrypt password file without exposing the password in
+the process list. It then starts RunPod's normal base services with application
+secrets removed from the child environment so `/start.sh` cannot export them
+to `/etc/rp_environment`.
+
+```bash
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+: "${AGENT_WEB_PASSWORD:?Set AGENT_WEB_PASSWORD with a RunPod secret}"
+
+agent_web_username="${AGENT_WEB_USERNAME:-guardian}"
+
+if [[ ! "$agent_web_username" =~ ^[A-Za-z0-9._-]{1,64}$ ]]; then
+  echo "AGENT_WEB_USERNAME contains unsupported characters" >&2
+  exit 1
+fi
+
+if (( ${#AGENT_WEB_PASSWORD} < 24 )); then
+  echo "AGENT_WEB_PASSWORD must contain at least 24 characters" >&2
+  exit 1
+fi
+
+case "$AGENT_WEB_PASSWORD" in
+  *$'\n'*|*$'\r'*)
+    echo "AGENT_WEB_PASSWORD must not contain line breaks" >&2
+    exit 1
+    ;;
+esac
+
+umask 077
+install -d -m 0700 /run/abap-guardian
+printf '%s\n' "$AGENT_WEB_PASSWORD" \
+  | /usr/bin/htpasswd -ciB \
+      /run/abap-guardian/agent-web.htpasswd \
+      "$agent_web_username" \
+      >/dev/null
+
+/usr/sbin/nginx -t
+
+exec /usr/bin/env \
+  -u AGENT_WEB_PASSWORD \
+  -u GUARDIAN_API_TOKEN \
+  -u ADMIN_API_KEY \
+  /start.sh
+```
+
+### 8.4 `deploy/runpod/nginx-agent-web.conf`
+
+The proxy applies Basic Authentication to every browser route and removes the
+credential before forwarding traffic to Agent on loopback.
+
+```nginx
+map $http_upgrade $abap_guardian_connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 8002 default_server;
+    server_name _;
+    server_tokens off;
+
+    auth_basic "ABAP Guardian Agent";
+    auth_basic_user_file /run/abap-guardian/agent-web.htpasswd;
+
+    client_max_body_size 25m;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 95s;
+        proxy_read_timeout 95s;
+        proxy_buffering off;
+        proxy_request_buffering off;
+
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $abap_guardian_connection_upgrade;
+        proxy_set_header Authorization "";
+    }
+}
+```
+
+### 8.5 `deploy/runpod/start-ollama.sh`
 
 ```bash
 #!/usr/bin/env bash
@@ -332,7 +444,7 @@ mkdir -p "$OLLAMA_MODELS"
 exec /usr/bin/ollama serve
 ```
 
-### 8.4 `deploy/runpod/start-agent.sh`
+### 8.6 `deploy/runpod/start-agent.sh`
 
 ```bash
 #!/usr/bin/env bash
@@ -378,7 +490,7 @@ exec /opt/agent-venv/bin/python "$AGENT_DIR/agent.py" web \
   --no-browser
 ```
 
-### 8.5 `deploy/runpod/start-guardian.sh`
+### 8.7 `deploy/runpod/start-guardian.sh`
 
 ```bash
 #!/usr/bin/env bash
@@ -414,7 +526,7 @@ exec /opt/guardian-venv/bin/uvicorn gateway.main:app \
   --no-access-log
 ```
 
-### 8.6 `deploy/runpod/supervisord.conf`
+### 8.8 `deploy/runpod/supervisord.conf`
 
 ```ini
 [supervisord]
@@ -434,7 +546,7 @@ supervisor.rpcinterface_factory=supervisor.rpcinterface:make_main_rpcinterface
 serverurl=unix:///tmp/supervisor.sock
 
 [program:runpod-base]
-command=/start.sh
+command=/opt/runpod/start-runpod-base.sh
 priority=10
 autostart=true
 autorestart=true
@@ -478,7 +590,7 @@ stdout_logfile=/workspace/abap-stack/logs/guardian.log
 stderr_logfile=/workspace/abap-stack/logs/guardian-error.log
 ```
 
-### 8.7 `deploy/runpod/Dockerfile.dockerignore`
+### 8.9 `deploy/runpod/Dockerfile.dockerignore`
 
 The filename is intentional: because the build context is the repository root,
 Docker uses this Dockerfile-specific ignore file next to `Dockerfile`.
@@ -502,16 +614,18 @@ Open PowerShell in the Guardian repository root:
 Set-Location <GUARDIAN_REPO>
 
 docker build `
+  --pull `
+  --no-cache `
   --platform linux/amd64 `
   --file deploy/runpod/Dockerfile `
-  --tag <DOCKER_USER>/abap-guardian-runpod:0.4.0-runpod1 `
+  --tag <DOCKER_USER>/abap-guardian-runpod:0.4.0-runpod3 `
   .
 ```
 
 This must finish successfully. Then push the immutable version tag:
 
 ```powershell
-docker push <DOCKER_USER>/abap-guardian-runpod:0.4.0-runpod1
+docker push <DOCKER_USER>/abap-guardian-runpod:0.4.0-runpod3
 ```
 
 Do not rely on a floating `latest` tag for the production Pod. A versioned tag
@@ -530,7 +644,7 @@ RunPod stores private-registry credentials as write-only values. See
 
 ## 11. Create the application secrets
 
-Generate two different cryptographically random tokens in PowerShell:
+Generate three different cryptographically random values in PowerShell:
 
 ```powershell
 function New-RandomHexToken {
@@ -543,23 +657,38 @@ function New-RandomHexToken {
 
 $guardianToken = New-RandomHexToken
 $agentAdminToken = New-RandomHexToken
+$agentWebPassword = New-RandomHexToken
 
-$guardianToken
-$agentAdminToken
+$guardianToken | Set-Clipboard
+Write-Host "Guardian token copied; save it in the password manager and RunPod secret."
 ```
 
-Immediately save both in the password manager. In **RunPod → Secrets**, create:
+Do not print or screenshot the values. Save each one in the password manager
+and its corresponding RunPod secret before copying the next value:
+
+```powershell
+$agentAdminToken | Set-Clipboard
+Write-Host "Agent administrator token copied."
+
+$agentWebPassword | Set-Clipboard
+Write-Host "Agent website password copied."
+```
+
+In **RunPod → Secrets**, create:
 
 | Secret name | Value |
 | --- | --- |
 | `guardian_api_token` | value of `$guardianToken` |
 | `abap_agent_admin_key` | value of `$agentAdminToken` |
+| `abap_agent_web_password` | value of `$agentWebPassword` |
 
 After saving, remove the plaintext variables from the PowerShell session:
 
 ```powershell
 $guardianToken = $null
 $agentAdminToken = $null
+$agentWebPassword = $null
+Clear-Clipboard
 ```
 
 RunPod secret values cannot be viewed after creation. Templates reference them
@@ -592,11 +721,11 @@ Open **Templates → New Template** and configure:
 | Setting | Value |
 | --- | --- |
 | Name | `ABAP Guardian Ollama RAG 0.4.0` |
-| Container image | `<DOCKER_USER>/abap-guardian-runpod:0.4.0-runpod1` |
+| Container image | `<DOCKER_USER>/abap-guardian-runpod:0.4.0-runpod3` |
 | Registry credentials | `dockerhub-abap-guardian` |
 | Container disk | `20 GB` |
 | Volume mount path | `/workspace` |
-| Expose HTTP ports | `8001` |
+| Expose HTTP ports | `8001,8002` |
 | Expose TCP ports | `22` |
 
 Add these environment variables:
@@ -607,6 +736,8 @@ Add these environment variables:
 | `EMBEDDING_MODEL` | `embeddinggemma` |
 | `GUARDIAN_API_TOKEN` | `{{ RUNPOD_SECRET_guardian_api_token }}` |
 | `ADMIN_API_KEY` | `{{ RUNPOD_SECRET_abap_agent_admin_key }}` |
+| `AGENT_WEB_USERNAME` | `guardian` |
+| `AGENT_WEB_PASSWORD` | `{{ RUNPOD_SECRET_abap_agent_web_password }}` |
 | `RATE_LIMIT_PER_MINUTE` | `60` |
 | `MAX_SOURCE_LENGTH` | `200000` |
 | `MAX_REQUEST_BODY_BYTES` | `1048576` |
@@ -615,7 +746,8 @@ Add these environment variables:
 | `MAX_TOKENS` | `1024` |
 
 Do not add an OpenAI key. Do not expose ports `8000`, `11434` or the Jupyter
-port `8888`.
+port `8888`. Port `8002` is safe to expose only through the included Nginx
+Basic Authentication proxy.
 
 ## 14. Deploy the GPU Pod
 
@@ -637,7 +769,8 @@ After the Pod reaches **Running**, open **Connect** and record:
 - Pod ID;
 - public IP address;
 - external TCP port mapped to internal port 22;
-- HTTP service for port 8001.
+- Guardian HTTP service for port 8001;
+- authenticated Agent website for port 8002.
 
 The service is not healthy yet because `agent.py` and `Modelfile` have not been
 transferred. The agent process intentionally waits for them.
@@ -830,6 +963,30 @@ curl --fail --silent --show-error \
   | /opt/agent-venv/bin/python -m json.tool
 ```
 
+Confirm that Guardian, not Nginx, owns port 8001 and that Nginx owns only the
+authenticated browser port:
+
+```bash
+ss -lntp | grep -E ':8001|:8002'
+```
+
+Expected process mapping:
+
+```text
+8001 -> uvicorn
+8002 -> nginx
+```
+
+The browser port must reject a request without credentials:
+
+```bash
+curl --silent --output /dev/null \
+  --write-out "HTTP status: %{http_code}\n" \
+  http://127.0.0.1:8002/
+```
+
+Expected result: `HTTP status: 401`.
+
 ## 19. Verify the public HTTPS endpoint from Windows
 
 Build the URL using the Pod ID:
@@ -858,10 +1015,14 @@ Expected result:
 401
 ```
 
-Test the token without adding it to a script file:
+Test the token without displaying it or adding it to a script file:
 
 ```powershell
-$guardianToken = Read-Host "Guardian API token"
+$guardianTokenSecure = Read-Host "Guardian API token" -AsSecureString
+$guardianToken = [System.Net.NetworkCredential]::new(
+  "",
+  $guardianTokenSecure
+).Password
 $headers = @{ Authorization = "Bearer $guardianToken" }
 
 Invoke-RestMethod `
@@ -870,10 +1031,21 @@ Invoke-RestMethod `
   ConvertTo-Json -Depth 5
 
 $guardianToken = $null
+$guardianTokenSecure = $null
 $headers = $null
 ```
 
-Do not expose the ABAP Agent or Ollama as additional HTTP services.
+Open the protected Agent website in a browser:
+
+```text
+https://<POD_ID>-8002.proxy.runpod.net
+```
+
+Use username `guardian` and the password stored in the
+`abap_agent_web_password` RunPod secret. The browser can now reach Agent while
+the Pod is running; no SSH tunnel or continuously running local PowerShell
+session is required. Never expose Agent's internal port `8000` or Ollama port
+`11434`.
 
 ## 20. Install or update ABAP Guardian in Eclipse
 
@@ -979,6 +1151,7 @@ When the same Pod is started again:
 - `/workspace` is reattached;
 - Ollama models, knowledge and Chroma data remain;
 - Supervisor restarts the services;
+- Nginx exposes the password-protected Agent website on port 8002;
 - the Guardian proxy URL remains based on the same Pod ID;
 - the SSH external port may change, so check **Connect** again.
 
@@ -1088,7 +1261,8 @@ re-index but does not replace the source knowledge files.
 The old token stops working after Guardian restarts with the new value.
 
 Rotate `abap_agent_admin_key` separately. Never reuse the Eclipse token as the
-agent administrator key.
+agent administrator key. Rotate `abap_agent_web_password` separately and
+update saved browser credentials when necessary.
 
 ## 29. Troubleshooting
 
@@ -1106,6 +1280,8 @@ curl -s http://127.0.0.1:8001/health | /opt/agent-venv/bin/python -m json.tool
 | --- | --- |
 | `abap-agent` remains STARTING/BACKOFF | Check that `agent.py` and `Modelfile` exist at the exact paths; inspect `abap-agent-error.log`. |
 | `guardian` does not start | Agent health is unavailable or `GUARDIAN_API_TOKEN` was not injected. |
+| Nginx or `runpod-base` does not start | Verify `AGENT_WEB_PASSWORD` is injected from the RunPod secret and contains at least 24 characters. |
+| Agent website returns 401 | Use username `guardian` and the current `abap_agent_web_password`; remove stale credentials saved by the browser. |
 | `llmAvailable` is false | Verify both model names, Ollama logs and `/api/status`. |
 | Out of GPU memory | Use a smaller quantization/model or a 48 GB GPU. |
 | Public health returns 502 | Guardian is not listening on `0.0.0.0:8001`; check Supervisor and logs. |
@@ -1140,9 +1316,10 @@ charges; stopping the Pod already releases GPU compute.
 - Secure Cloud and the selected European data location are organizationally
   approved.
 - The custom image is private and referenced by an immutable version tag.
-- Only `8001/http` and administration `22/tcp` are exposed.
+- Only `8001/http`, authenticated `8002/http` and administration `22/tcp` are exposed.
 - Ports `8000`, `11434` and `8888` are not exposed.
 - Guardian requires a random bearer token.
+- The Agent website requires a separate random Basic Authentication password.
 - The token is stored in RunPod Secrets, a password manager and Eclipse Secure
   Storage.
 - The agent administrator key is different from the Guardian token.

@@ -26,6 +26,9 @@ eclipse-plugin).
 - The dedicated GPU deployment requires a Guardian API bearer token, mounts it
   as a Docker secret and keeps Ollama/Chroma private. Eclipse stores the token
   in Equinox Secure Storage; nothing is written to plain preferences or logs.
+- The RunPod image keeps Agent on loopback. Its optional public browser route
+  uses a separate bcrypt-backed Basic Authentication password and never
+  forwards that browser credential to Agent.
 
 ## Scope Notes
 

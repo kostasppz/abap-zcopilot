@@ -11,6 +11,7 @@
 | Ollama (optional) | localhost HTTP | Local development model; schema-validated JSON responses; timeouts. |
 | ABAP Expert RAG (optional) | Local Docker network | Loopback-only published ports, Chroma/PDF/Word retrieval, bounded prompts, NDJSON parsing, sanitized errors and timeouts. |
 | Dedicated GPU VM | Caddy on 80/443 only | Automatic TLS; Guardian API bearer token; separate Basic Auth for the optional browser chat; Ollama/Chroma remain private. |
+| RunPod GPU Pod | HTTPS proxy on 8001/8002 | Guardian bearer token on 8001; separate Nginx Basic Auth on 8002; Agent and Ollama remain loopback-only; secrets injected from RunPod Secrets. |
 
 ## Gateway hardening
 

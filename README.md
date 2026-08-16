@@ -101,8 +101,10 @@ verification, Eclipse setup, updates, backups and token rotation:
 
 RunPod avoids the AWS EC2 GPU quota workflow and runs the stack in one custom
 Pod image. The agent source, knowledge, Chroma database and Ollama model data
-remain on a persistent network volume. Follow the complete Docker Hub, RunPod,
-security, storage and Eclipse walkthrough in
+remain on a persistent network volume. Guardian is bearer-token protected on
+port 8001, while the optional Agent browser UI is exposed through a separate
+password-protected Nginx proxy on port 8002. Follow the complete Docker Hub,
+RunPod, security, storage and Eclipse walkthrough in
 [`docs/runpod.md`](docs/runpod.md).
 
 ## Alternative proof of concept: Render with hosted OpenAI

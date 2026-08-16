@@ -74,6 +74,9 @@ public final class S4HanaRules {
             List<Finding> findings = new ArrayList<>();
             for (AbapStatement statement : context.getSource().getStatements()) {
                 String table = referencedSqlTable(statement);
+                if (table == null) {
+                    continue;
+                }
                 Replacement replacement = SIMPLIFIED_TABLES.get(table);
                 if (replacement == null) {
                     continue;

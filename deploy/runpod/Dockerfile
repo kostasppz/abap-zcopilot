@@ -59,7 +59,10 @@ COPY deploy/runpod/start-ollama.sh /opt/runpod/start-ollama.sh
 COPY deploy/runpod/start-agent.sh /opt/runpod/start-agent.sh
 COPY deploy/runpod/start-guardian.sh /opt/runpod/start-guardian.sh
 COPY deploy/runpod/supervisord.conf /opt/runpod/supervisord.conf
-RUN chmod 0755 /opt/runpod/*.sh
+# Windows Git clients can still provide CRLF files through an existing
+# checkout. Normalize them in the image as a second line of defense.
+RUN sed -i 's/\r$//' /opt/runpod/*.sh \
+    && chmod 0755 /opt/runpod/*.sh
 
 EXPOSE 8001
 CMD ["/opt/runpod/run.sh"]

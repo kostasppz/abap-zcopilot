@@ -3,8 +3,8 @@
 Privacy invariants:
   * No ABAP source is ever stored or logged (logging of request bodies is
     disabled; the analyzer bridge pipes source via stdin only).
-  * Fully local by default (Ollama at localhost); external providers are
-    disabled unless explicitly opted in, and redaction stays active.
+  * AI runs only through the private ABAP Expert/Ollama services and the
+    redaction layer stays active.
 """
 
 from __future__ import annotations
@@ -145,6 +145,12 @@ async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
 
     findings = [Finding.model_validate(f) for f in raw.get("findings", [])]
     suppressed = [Finding.model_validate(f) for f in raw.get("suppressedFindings", [])]
+    if request.categories:
+        selected_categories = set(request.categories)
+        findings = [finding for finding in findings if finding.category in selected_categories]
+        suppressed = [
+            finding for finding in suppressed if finding.category in selected_categories
+        ]
     findings = findings[: settings.max_findings]
 
     ai_enhanced = False

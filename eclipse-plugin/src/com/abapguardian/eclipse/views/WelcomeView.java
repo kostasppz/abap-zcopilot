@@ -32,20 +32,20 @@ public class WelcomeView extends ViewPart {
         intro.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
         intro.setText(
                 "ABAP Guardian analyzes active ABAP source for performance, security, "
-                + "privacy and policy problems. Copilot can answer questions using the "
+                + "S/4HANA compatibility, Clean ABAP, privacy and policy problems. "
+                + "Copilot can answer questions using the "
                 + "active editor and the project's bundled knowledge. Source context is "
                 + "sent only when you explicitly use chat or enable automatic analysis.");
 
         Label whatsNew = new Label(parent, SWT.WRAP);
         whatsNew.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
         whatsNew.setText(
-                "What's new in 0.4.0\n\n"
-                + "• Dedicated NVIDIA GPU VM deployment\n"
-                + "• HTTPS bearer-token authentication\n"
-                + "• Encrypted API-token storage in Eclipse\n"
-                + "• Remote ABAP Expert, Chroma and Ollama integration\n"
-                + "• Request-size and rate-limit protection\n"
-                + "• Complete deployment and Eclipse tutorial");
+                "What's new in 0.5.0\n\n"
+                + "• SAP S/4HANA compatibility checks and migration suggestions\n"
+                + "• ABAP Clean Code checks and modernization suggestions\n"
+                + "• Separate Performance, Security, S/4HANA and Clean Code commands\n"
+                + "• Private RunPod ABAP Expert integration\n"
+                + "• Welcome page now opens once per installed version");
 
         Composite actions = new Composite(parent, SWT.NONE);
         actions.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));

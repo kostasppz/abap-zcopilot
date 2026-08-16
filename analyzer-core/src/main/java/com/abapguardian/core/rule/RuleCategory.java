@@ -4,6 +4,8 @@ package com.abapguardian.core.rule;
 public enum RuleCategory {
     PERFORMANCE,
     SECURITY,
+    S4HANA,
+    CLEAN_CODE,
     PRIVACY,
     POLICY,
     MAINTAINABILITY

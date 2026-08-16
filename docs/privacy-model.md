@@ -2,28 +2,22 @@
 
 ## Principles
 
-1. **Explicit service boundary.** In hosted mode, the current ABAP document
-   is sent over HTTPS to the configured Guardian service for deterministic
-   analysis. Deploy the service only in an environment approved for the
-   source code being analyzed.
+1. **Explicit service boundary.** The current ABAP document is sent over HTTPS
+   to the authenticated Guardian service in the configured RunPod Pod for
+   deterministic analysis. Deploy the Pod only in an approved region/account.
 2. **No retention.** ABAP source is never stored or logged by the gateway.
    It is piped to the analyzer via stdin (never argv, never temp files) and
    exists only in memory for the duration of a request. Automated tests
    (`ai-gateway/tests/test_no_source_logging.py`) enforce this.
-3. **External providers are server-side opt-in.** `LLM_PROVIDER=openai` is
-   inactive unless `ALLOW_EXTERNAL_PROVIDERS=true` and `OPENAI_API_KEY` are
-   configured on the server. Responses requests use `store: false`; the
-   redaction layer remains active.
-4. **Redaction layer.** Before any prompt leaves the Guardian service for an
-   external model,
+3. **Private model provider.** `LLM_PROVIDER=abap-agent` delegates only to the
+   ABAP Expert service on the same Pod; that service uses the private Ollama
+   listener and persistent Chroma knowledge database.
+4. **Redaction layer.** Before a prompt reaches the private model,
    `gateway/redaction.py` masks likely personal data (emails, IBANs,
    8-digit personnel numbers, phone numbers) and credentials (passwords,
    bearer tokens).
-5. **Local RAG option.** With `LLM_PROVIDER=abap-agent`, Guardian and the ABAP
-   Expert RAG service run on the same local Docker network. No OpenAI key is
-   configured and ports in the supplied Compose example bind only to
-   `127.0.0.1`. The bounded redacted prompt is processed locally by Chroma and
-   Ollama.
+5. **Local RAG option.** The supplied local Compose example uses the same
+   ABAP Expert provider and binds private ports only to `127.0.0.1`.
 6. **Dedicated GPU boundary.** In the VM deployment, source crosses the
    network only over HTTPS to the selected VM and is processed in memory.
    Ollama and Chroma are not published, and Caddy mediates any optional ABAP
@@ -56,8 +50,8 @@ values below 1.0 — a human decides whether a real problem exists.
 
 - The AI sees at most a bounded, redacted snippet (4000 chars) plus finding
   metadata or the current Copilot question/conversation context.
-- The hosted Guardian service necessarily sees the complete document for
-  deterministic analysis; the external LLM does not receive that full source.
+- Guardian necessarily sees the complete document for deterministic analysis;
+  ABAP Expert receives only the bounded redacted context.
 - It can improve explanation/recommendation/suggested-code **text** only.
 - It cannot add findings, remove findings, or alter line/column numbers —
   positions come exclusively from the deterministic engine and are enforced
@@ -73,7 +67,6 @@ values below 1.0 — a human decides whether a real problem exists.
 - Copilot includes source only when **Use active ABAP editor/selection as
   context** is checked. Chat history lives in memory in the Eclipse view and is
   not persisted by the plug-in.
-- OpenAI Responses requests remain stateless with `store: false`.
 - Local ABAP Expert requests use its in-memory NDJSON chat endpoint. Guardian
   does not persist prompts or streamed replies.
 

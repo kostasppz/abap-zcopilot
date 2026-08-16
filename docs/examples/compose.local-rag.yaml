@@ -39,7 +39,6 @@ services:
       LLM_PROVIDER: abap-agent
       ABAP_AGENT_BASE_URL: http://abap-ai:8000
       ABAP_AGENT_MODEL: abap-expert
-      ALLOW_EXTERNAL_PROVIDERS: "false"
       REDACTION_ENABLED: "true"
       # ABAP Expert supplies Chroma/PDF/Word RAG. Disable Guardian's extra
       # lexical retrieval so the model does not receive duplicate context.

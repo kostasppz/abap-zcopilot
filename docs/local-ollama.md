@@ -1,8 +1,7 @@
 # Local Ollama Setup
 
-This setup is optional and intended for local development or organizations
-that do not permit source or prompts to leave their network. Normal Eclipse
-users of the hosted release do not install Ollama.
+This setup is optional and intended for local development. Normal Eclipse
+users of the RunPod-backed release do not install Ollama.
 
 ABAP Guardian's AI features run entirely on your machine through
 [Ollama](https://ollama.com). No cloud account is required.
@@ -58,11 +57,3 @@ If Ollama is already used through the local ABAP Expert service with Chroma,
 PDF and Word knowledge, do not bypass that retrieval pipeline. Configure
 Guardian with `LLM_PROVIDER=abap-agent` and follow
 [`local-abap-agent.md`](local-abap-agent.md).
-
-## External providers (opt-in, discouraged)
-
-External AI providers are disabled by default. If you explicitly set
-`ALLOW_EXTERNAL_PROVIDERS=true` you accept that prompts (never full source
-beyond the bounded snippet) leave your machine; the redaction layer stays
-active and masks likely personal data and credentials. Read
-`docs/privacy-model.md` first.

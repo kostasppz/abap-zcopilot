@@ -1,9 +1,9 @@
 # ABAP Guardian AI Gateway
 
 FastAPI service that runs the deterministic ABAP Guardian analyzer first and
-optionally enriches findings through hosted OpenAI Responses, direct local
-Ollama, or the local ABAP Expert streaming RAG service. See the repository
-root `README.md` and `docs/` for full documentation.
+optionally enriches findings through the private RunPod ABAP Expert streaming
+RAG service or its local Ollama runtime. See the repository root `README.md`
+and `docs/` for full documentation.
 
 ## Local ABAP Expert RAG provider
 
@@ -11,7 +11,6 @@ root `README.md` and `docs/` for full documentation.
 LLM_PROVIDER=abap-agent
 ABAP_AGENT_BASE_URL=http://abap-ai:8000
 ABAP_AGENT_MODEL=abap-expert
-ALLOW_EXTERNAL_PROVIDERS=false
 ```
 
 The adapter consumes `POST /api/chat` NDJSON events and exposes the normal
@@ -35,33 +34,24 @@ TLS, isolated Docker networking and Eclipse Secure Storage, follow
 `GET /health` remains public for container and uptime health checks and reports
 whether authentication is required and configured. It never returns a token.
 
-## Hosted container
+## RunPod container
 
 From the repository root:
 
 ```bash
-docker build -t abap-guardian .
-docker run --rm -p 8000:8000 \
-  -e LLM_PROVIDER=openai \
-  -e ALLOW_EXTERNAL_PROVIDERS=true \
-  -e OPENAI_API_KEY \
-  abap-guardian
+docker build --file deploy/runpod/Dockerfile \
+  --tag <DOCKER_USER>/abap-guardian-runpod:0.5.0-runpod1 .
 ```
 
-The API key remains on the server. OpenAI requests set `store: false` and
-receive only the bounded prompt after Guardian redaction.
-
-The container also bundles curated Markdown/YAML from `docs/` and `rules/`.
-`POST /api/v1/chat` performs dependency-free lexical retrieval over those
-files and includes only the most relevant bounded passages in the prompt.
-Knowledge retrieval happens inside the Guardian container; it does not require
-or upload documentation to an external vector database.
+The RunPod image keeps Guardian on port 8001, ABAP Expert on private port 8000
+and Ollama on private port 11434. Guardian authenticates Eclipse requests with
+`GUARDIAN_API_TOKEN`; retrieval and generation remain inside the Pod.
 
 ## Quick start
 
 ```bash
 pip install -e .
-export ANALYZER_JAR=../analyzer-core/target/analyzer-core-0.4.0-SNAPSHOT.jar
+export ANALYZER_JAR=../analyzer-core/target/analyzer-core-0.5.0-SNAPSHOT.jar
 uvicorn gateway.main:app --port 8000
 ```
 
@@ -71,10 +61,10 @@ uvicorn gateway.main:app --port 8000
   stdin only.
 - AI output can only refine explanation/recommendation/suggested code —
   never positions or the finding set.
-- External AI providers are disabled by default; a redaction layer masks
-  likely personal data and credentials in prompts.
+- A redaction layer masks likely personal data and credentials before the
+  private ABAP Expert model receives a prompt.
 - Chat and finding enhancement send at most 4000 characters of redacted code
-  context onward to an external provider.
+  context to the model inside the Pod.
 - Production API tokens are compared in constant time and never logged.
 
 ## Tests

@@ -17,7 +17,7 @@ The deployment retains:
 - redaction, size limits and rate limiting;
 - Eclipse Secure Storage for the API token.
 
-No OpenAI API or OpenAI API key is used.
+No external model API or external model key is used.
 
 Unlike the AWS EC2 path, this setup does not begin with an EC2 GPU-vCPU quota
 increase. You fund the RunPod account and deploy an available GPU. Deployment
@@ -90,7 +90,7 @@ You need:
 1. A RunPod account with a payment method or prepaid credit.
 2. A Docker Hub account and a private repository.
 3. Docker Desktop running on Windows.
-4. The prepared ABAP Guardian `0.4.0` source tree on Windows.
+4. The prepared ABAP Guardian `0.5.0` source tree on Windows.
 5. The private local `abap-agent` folder containing:
    - `agent.py`;
    - `Dockerfile` and/or `requirements.txt`;
@@ -102,9 +102,9 @@ You need:
 6. Eclipse with ABAP Development Tools.
 7. An approved password manager for tokens.
 
-The secure deployment requires ABAP Guardian `0.4.0` or newer. If the Eclipse
+The secure deployment requires ABAP Guardian `0.5.0` or newer. If the Eclipse
 Preferences page does not contain an **API token** field, update/publish the
-prepared `0.4.0` plug-in before connecting it to RunPod.
+prepared `0.5.0` plug-in before connecting it to RunPod.
 
 Throughout this guide, replace these placeholders:
 
@@ -520,7 +520,6 @@ done
 export LLM_PROVIDER="abap-agent"
 export ABAP_AGENT_BASE_URL="http://127.0.0.1:8000"
 export ABAP_AGENT_MODEL="${CHAT_MODEL:-abap-expert}"
-export ALLOW_EXTERNAL_PROVIDERS="false"
 export REDACTION_ENABLED="true"
 export BUNDLED_KNOWLEDGE_PATH=""
 export REQUIRE_API_AUTH="true"
@@ -632,14 +631,14 @@ docker build `
   --no-cache `
   --platform linux/amd64 `
   --file deploy/runpod/Dockerfile `
-  --tag <DOCKER_USER>/abap-guardian-runpod:0.4.0-runpod5 `
+  --tag <DOCKER_USER>/abap-guardian-runpod:0.5.0-runpod1 `
   .
 ```
 
 This must finish successfully. Then push the immutable version tag:
 
 ```powershell
-docker push <DOCKER_USER>/abap-guardian-runpod:0.4.0-runpod5
+docker push <DOCKER_USER>/abap-guardian-runpod:0.5.0-runpod1
 ```
 
 Do not rely on a floating `latest` tag for the production Pod. A versioned tag
@@ -734,8 +733,8 @@ Open **Templates → New Template** and configure:
 
 | Setting | Value |
 | --- | --- |
-| Name | `ABAP Guardian Ollama RAG 0.4.0` |
-| Container image | `<DOCKER_USER>/abap-guardian-runpod:0.4.0-runpod5` |
+| Name | `ABAP Guardian Ollama RAG 0.5.0` |
+| Container image | `<DOCKER_USER>/abap-guardian-runpod:0.5.0-runpod1` |
 | Registry credentials | `dockerhub-abap-guardian` |
 | Container disk | `20 GB` |
 | Volume mount path | `/workspace` |
@@ -759,7 +758,7 @@ Add these environment variables:
 | `AI_TIMEOUT_SECONDS` | `90` |
 | `MAX_TOKENS` | `1024` |
 
-Do not add an OpenAI key. Do not expose ports `8000`, `11434` or the Jupyter
+Do not add an external model key. Do not expose ports `8000`, `11434` or the Jupyter
 port `8888`. Port `8002` is safe to expose only through the included Nginx
 Basic Authentication proxy.
 
@@ -770,7 +769,7 @@ Basic Authentication proxy.
 3. Select the `abap-guardian-data` network volume first.
 4. Select a compatible European data centre.
 5. Select one 24 GB GPU, preferably L4, A5000, RTX 3090 or RTX 4090.
-6. Select the private template `ABAP Guardian Ollama RAG 0.4.0`.
+6. Select the private template `ABAP Guardian Ollama RAG 0.5.0`.
 7. Enable SSH terminal access/public IP support.
 8. Confirm the hourly price.
 9. Choose **Deploy On-Demand**.
@@ -958,7 +957,7 @@ Expected properties:
   "analyzerAvailable": true,
   "authenticationRequired": true,
   "authenticationConfigured": true,
-  "version": "0.4.0"
+  "version": "0.5.0"
 }
 ```
 
@@ -1079,7 +1078,7 @@ session is required. Never expose Agent's internal port `8000` or Ollama port
 ### Existing installation
 
 1. Choose **Help → Check for Updates**.
-2. Install ABAP Guardian `0.4.0` or newer.
+2. Install ABAP Guardian `0.5.0` or newer.
 3. Restart Eclipse.
 4. Open **Window → Preferences → ABAP Guardian**.
 5. Confirm that an **API token** field is present.
@@ -1296,7 +1295,7 @@ curl -s http://127.0.0.1:8001/health | /opt/agent-venv/bin/python -m json.tool
 | `guardian` does not start | Agent health is unavailable or `GUARDIAN_API_TOKEN` was not injected. |
 | Nginx or `runpod-base` does not start | Verify `AGENT_WEB_PASSWORD` is injected from the RunPod secret and contains at least 24 characters. |
 | Agent website returns 401 | Use username `guardian` and the current `abap_agent_web_password`; remove stale credentials saved by the browser. |
-| Agent website returns Nginx 500 after login | Verify `/run/abap-guardian` is group-readable by `www-data`; use image tag `0.4.0-runpod5` or newer. |
+| Agent website returns Nginx 500 after login | Verify `/run/abap-guardian` is group-readable by `www-data`; use image tag `0.5.0-runpod1` or newer. |
 | `llmAvailable` is false | Verify both model names, Ollama logs and `/api/status`. |
 | Out of GPU memory | Use a smaller quantization/model or a 48 GB GPU. |
 | Public health returns 502 | Guardian is not listening on `0.0.0.0:8001`; check Supervisor and logs. |

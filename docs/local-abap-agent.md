@@ -16,7 +16,7 @@ Eclipse / ADT
 
 The containers communicate only through the Docker Compose network. Ports
 8000 and 8001 are bound to `127.0.0.1`, so neither local service is exposed to
-the LAN. No OpenAI key is used and `ALLOW_EXTERNAL_PROVIDERS` remains false.
+the LAN. All model inference stays in the local ABAP Expert/Ollama stack.
 
 ## Directory layout
 

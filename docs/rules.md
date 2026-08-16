@@ -1,6 +1,6 @@
 # Rules Reference
 
-All 34 rules are deterministic and token/statement based; keywords inside
+All 45 rules are deterministic and token/statement based; keywords inside
 comments and string literals never trigger. Positions are 1-based lines and
 columns. Configuration lives in `rules/*.yaml` (enable/disable, severity
 override, confidence threshold, sensitive identifiers, approved
@@ -40,6 +40,34 @@ destinations, thresholds).
 | `SEC_MISSING_SY_SUBRC_HANDLING` | HIGH | AUTHORITY-CHECK whose sy-subrc is never evaluated. |
 | `SEC_INSECURE_HTTP` | MEDIUM | Plain `http://` endpoints in literals. |
 | `SEC_AUTHORIZATION_CHECK_INDICATOR` | INFO | **Heuristic** indicator that a human should verify authorization handling. Never asserts a check is missing; confidence 0.3; always requires human review. |
+
+## SAP S/4HANA compatibility (5)
+
+| Rule | Default severity | What it flags |
+| --- | --- | --- |
+| `S4_SIMPLIFIED_DATA_MODEL_TABLE` | HIGH | Direct SQL access to known simplified application tables such as MSEG/MKPF, KONV, classic FI index tables and sales status tables. |
+| `S4_WITH_HEADER_LINE` | MEDIUM | Obsolete internal tables declared `WITH HEADER LINE`. |
+| `S4_OCCURS_DECLARATION` | MEDIUM | Obsolete `OCCURS` table declarations. |
+| `S4_NATIVE_SQL` | HIGH | Native `EXEC SQL` that bypasses ABAP SQL portability. |
+| `S4_DATABASE_HINT` | MEDIUM | Database-specific SQL hints that require SAP HANA review. |
+
+These findings provide migration examples, but released CDS/API selection and
+field mapping must be validated against the relevant SAP S/4HANA
+Simplification Item and ATC readiness checks.
+
+## ABAP Clean Code (6)
+
+| Rule | Default severity | What it flags |
+| --- | --- | --- |
+| `CLEAN_MOVE_STATEMENT` | LOW | Verbose `MOVE source TO target` syntax. |
+| `CLEAN_COMPUTE_STATEMENT` | LOW | Verbose `COMPUTE` syntax. |
+| `CLEAN_FORM_ROUTINE` | MEDIUM | Procedural FORM/PERFORM design that should be reviewed for method extraction. |
+| `CLEAN_CALL_METHOD_STATEMENT` | LOW | Verbose `CALL METHOD` syntax. |
+| `CLEAN_DEEP_NESTING` | MEDIUM | Control flow nested more than three levels. |
+| `CLEAN_BOOLEAN_LITERAL` | LOW | Boolean conditions expressed with `'X'` or space instead of ABAP boolean constants. |
+
+Every Clean Code finding includes a recommendation and a preview-only code
+suggestion. Eclipse never applies a suggestion without explicit confirmation.
 
 ## Privacy (9)
 

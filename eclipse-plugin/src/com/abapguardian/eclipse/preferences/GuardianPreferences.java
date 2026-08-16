@@ -4,6 +4,7 @@ import com.abapguardian.eclipse.Activator;
 
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.osgi.service.prefs.Preferences;
+import org.osgi.service.prefs.BackingStoreException;
 
 /** Typed access to the plug-in's preferences. */
 public final class GuardianPreferences {
@@ -18,8 +19,8 @@ public final class GuardianPreferences {
     public static final String KEY_LIVE_USE_AI = "liveUseAi";
     public static final String KEY_LAST_WELCOME_VERSION = "lastWelcomeVersion";
 
-    /** Hosted proof-of-concept gateway. Override in Preferences for private deployments. */
-    public static final String DEFAULT_SERVICE_URL = "https://abap-zcopilot.onrender.com";
+    /** RunPod Pod URLs are installation-specific and must be configured explicitly. */
+    public static final String DEFAULT_SERVICE_URL = "";
     public static final int DEFAULT_TIMEOUT_SECONDS = 120;
     public static final boolean DEFAULT_USE_AI = true;
     public static final String DEFAULT_MIN_SEVERITY = "INFO";
@@ -72,6 +73,12 @@ public final class GuardianPreferences {
     }
 
     public static void setLastWelcomeVersion(String version) {
-        node().put(KEY_LAST_WELCOME_VERSION, version);
+        Preferences preferences = node();
+        preferences.put(KEY_LAST_WELCOME_VERSION, version);
+        try {
+            preferences.flush();
+        } catch (BackingStoreException exception) {
+            Activator.logError("Cannot persist ABAP Guardian welcome version", exception);
+        }
     }
 }

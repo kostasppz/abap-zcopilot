@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-import asyncio
-import json
 from unittest.mock import patch
 
 import respx
 from httpx import Response
 
-from gateway import llm_client
 from gateway.config import settings
 from gateway.knowledge import (
     BundledKnowledgeProvider,
@@ -29,13 +26,6 @@ def test_health(client):
     assert body["llmAvailable"] is True
     assert body["llmProvider"] == "ollama"
     assert body["ollamaAvailable"] is True
-
-
-def test_hosted_provider_requires_explicit_opt_in():
-    with patch.object(settings, "llm_provider", "openai"), \
-         patch.object(settings, "openai_api_key", "server-secret"), \
-         patch.object(settings, "allow_external_providers", False):
-        assert asyncio.run(llm_client.is_available()) is False
 
 
 @respx.mock
@@ -157,37 +147,6 @@ def test_chat_uses_context_and_bundled_knowledge(client, tmp_path):
 def test_chat_rejects_blank_question(client):
     resp = client.post("/api/v1/chat", json={"question": "   "})
     assert resp.status_code == 422
-
-
-@respx.mock
-def test_hosted_chat_is_stateless_and_uses_server_key(client):
-    route = respx.post("https://api.openai.com/v1/responses").mock(
-        return_value=Response(
-            200,
-            json={
-                "output": [
-                    {
-                        "type": "message",
-                        "content": [{"type": "output_text", "text": "Use a hashed table."}],
-                    }
-                ]
-            },
-        )
-    )
-    with patch.object(settings, "llm_provider", "openai"), \
-         patch.object(settings, "allow_external_providers", True), \
-         patch.object(settings, "openai_api_key", "server-chat-secret"), \
-         patch.object(settings, "openai_base_url", "https://api.openai.com/v1"), \
-         patch.object(settings, "bundled_knowledge_path", ""):
-        resp = client.post(
-            "/api/v1/chat",
-            json={"question": "Which table type should I use?", "selection": "READ TABLE lt."},
-        )
-    assert resp.status_code == 200
-    assert resp.json()["answer"] == "Use a hashed table."
-    request = route.calls[0].request
-    assert request.headers["Authorization"] == "Bearer server-chat-secret"
-    assert json.loads(request.content)["store"] is False
 
 
 class MockRagProvider:

@@ -33,7 +33,6 @@ services:
       LLM_PROVIDER: abap-agent
       ABAP_AGENT_BASE_URL: http://abap-ai:8000
       ABAP_AGENT_MODEL: ${CHAT_MODEL:-abap-expert}
-      ALLOW_EXTERNAL_PROVIDERS: "false"
       REDACTION_ENABLED: "true"
       BUNDLED_KNOWLEDGE_PATH: ""
       REQUIRE_API_AUTH: "true"

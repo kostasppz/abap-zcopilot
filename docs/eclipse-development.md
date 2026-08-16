@@ -25,9 +25,9 @@ Artifacts:
 1. Build the update site (or download the release ZIP).
 2. *Help → Install New Software… → Add… → Archive*, select the ZIP.
 3. Select **ABAP Guardian**, finish, restart.
-4. The release defaults to the hosted service at
-   `https://abap-zcopilot.onrender.com`; no local gateway is required.
-5. Configure a different private service via *ABAP Guardian → Configure*.
+4. Open *ABAP Guardian → Configure*.
+5. Enter `https://<POD_ID>-8001.proxy.runpod.net` and securely store the
+   matching RunPod `GUARDIAN_API_TOKEN`.
 
 ## Development in the IDE
 
@@ -62,7 +62,8 @@ ADT installation with PDE). Launch a runtime workbench with the plug-in via
   perspective. Chat can use the active editor or current text selection as
   context; `Ctrl+Alt+C` opens it.
 - **Editor context menu** — Ask Guardian, Analyze Selection, Analyze Current
-  Editor, Explain Selection and Suggest Correction.
+  Editor (all checks), category-only Performance/Security/S/4HANA/Clean Code,
+  Explain Selection and Suggest Correction.
 - **Live analysis** — `LiveAnalysisController` attaches only to the active
   public `ITextEditor` document, debounces changes, cancels stale jobs and can
   analyze on save. Both triggers are opt-in; automatic AI is separately opt-in.
@@ -72,7 +73,8 @@ ADT installation with PDE). Launch a runtime workbench with the plug-in via
   before any change and requires confirmation; the edit stays unsaved and is
   one undo operation. Copilot suggestions enter this path only when the reply
   contains a fenced ABAP block and the original editor selection is unchanged.
-- **Welcome/What's New** — `GuardianStartup` opens `WelcomeView` once per
-  installed bundle version and performs a background service health check.
-- **Preference page** — hosted service URL, timeout, online-AI toggle,
+- **Welcome/What's New** — `GuardianStartup` opens the non-restorable
+  `WelcomeView` once per installed bundle version, flushes that version to the
+  instance preference store and performs a background service health check.
+- **Preference page** — RunPod service URL, timeout, online-AI toggle,
   minimum severity, live delay, on-save/live switches and connection test.

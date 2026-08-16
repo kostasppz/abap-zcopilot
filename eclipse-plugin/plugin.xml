@@ -9,7 +9,19 @@
                name="Analyze Selected ABAP Object"/>
       <command id="com.abapguardian.eclipse.commands.analyzeCurrent"
                categoryId="com.abapguardian.eclipse.commands.category"
-               name="Analyze Current Editor"/>
+               name="Analyze Current Editor (All Checks)"/>
+      <command id="com.abapguardian.eclipse.commands.analyzePerformance"
+               categoryId="com.abapguardian.eclipse.commands.category"
+               name="Analyze Performance Only"/>
+      <command id="com.abapguardian.eclipse.commands.analyzeSecurity"
+               categoryId="com.abapguardian.eclipse.commands.category"
+               name="Analyze Security Only"/>
+      <command id="com.abapguardian.eclipse.commands.analyzeS4Hana"
+               categoryId="com.abapguardian.eclipse.commands.category"
+               name="Analyze S/4HANA Compatibility Only"/>
+      <command id="com.abapguardian.eclipse.commands.analyzeCleanCode"
+               categoryId="com.abapguardian.eclipse.commands.category"
+               name="Analyze ABAP Clean Code Only"/>
       <command id="com.abapguardian.eclipse.commands.openFindings"
                categoryId="com.abapguardian.eclipse.commands.category"
                name="Open Guardian Findings"/>
@@ -38,6 +50,14 @@
                class="com.abapguardian.eclipse.handlers.AnalyzeSelectedHandler"/>
       <handler commandId="com.abapguardian.eclipse.commands.analyzeCurrent"
                class="com.abapguardian.eclipse.handlers.AnalyzeCurrentHandler"/>
+      <handler commandId="com.abapguardian.eclipse.commands.analyzePerformance"
+               class="com.abapguardian.eclipse.handlers.AnalyzeCategoryHandler"/>
+      <handler commandId="com.abapguardian.eclipse.commands.analyzeSecurity"
+               class="com.abapguardian.eclipse.handlers.AnalyzeCategoryHandler"/>
+      <handler commandId="com.abapguardian.eclipse.commands.analyzeS4Hana"
+               class="com.abapguardian.eclipse.handlers.AnalyzeCategoryHandler"/>
+      <handler commandId="com.abapguardian.eclipse.commands.analyzeCleanCode"
+               class="com.abapguardian.eclipse.handlers.AnalyzeCategoryHandler"/>
       <handler commandId="com.abapguardian.eclipse.commands.openFindings"
                class="com.abapguardian.eclipse.handlers.OpenFindingsHandler"/>
       <handler commandId="com.abapguardian.eclipse.commands.configure"
@@ -70,6 +90,10 @@
             <command commandId="com.abapguardian.eclipse.commands.askGuardian" style="push"/>
             <separator name="copilotSep" visible="true"/>
             <command commandId="com.abapguardian.eclipse.commands.analyzeCurrent" style="push"/>
+            <command commandId="com.abapguardian.eclipse.commands.analyzePerformance" style="push"/>
+            <command commandId="com.abapguardian.eclipse.commands.analyzeSecurity" style="push"/>
+            <command commandId="com.abapguardian.eclipse.commands.analyzeS4Hana" style="push"/>
+            <command commandId="com.abapguardian.eclipse.commands.analyzeCleanCode" style="push"/>
             <command commandId="com.abapguardian.eclipse.commands.analyzeTextSelection" style="push"/>
             <command commandId="com.abapguardian.eclipse.commands.analyzeSelected" style="push"/>
             <separator name="sep1" visible="true"/>
@@ -84,7 +108,15 @@
             <command commandId="com.abapguardian.eclipse.commands.analyzeTextSelection"
                      label="Analyze Selection" style="push"/>
             <command commandId="com.abapguardian.eclipse.commands.analyzeCurrent"
-                     label="Analyze Current Editor" style="push"/>
+                     label="Analyze Current Editor (All Checks)" style="push"/>
+            <command commandId="com.abapguardian.eclipse.commands.analyzePerformance"
+                     label="Analyze Performance Only" style="push"/>
+            <command commandId="com.abapguardian.eclipse.commands.analyzeSecurity"
+                     label="Analyze Security Only" style="push"/>
+            <command commandId="com.abapguardian.eclipse.commands.analyzeS4Hana"
+                     label="Analyze S/4HANA Compatibility Only" style="push"/>
+            <command commandId="com.abapguardian.eclipse.commands.analyzeCleanCode"
+                     label="Analyze ABAP Clean Code Only" style="push"/>
             <separator name="quickActions" visible="true"/>
             <command commandId="com.abapguardian.eclipse.commands.explainSelection"
                      label="Explain Selection" style="push"/>
@@ -110,7 +142,7 @@
             category="com.abapguardian.eclipse.views.category"
             class="com.abapguardian.eclipse.views.WelcomeView"
             name="Welcome to ABAP Guardian"
-            restorable="true"/>
+            restorable="false"/>
    </extension>
 
    <extension point="org.eclipse.ui.perspectiveExtensions">

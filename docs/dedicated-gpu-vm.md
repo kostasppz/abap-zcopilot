@@ -383,7 +383,7 @@ do not reuse the same secret.
 
 ## Step 12: update and configure Eclipse
 
-API-token support is included in ABAP Guardian 0.4.0 or newer.
+API-token support is included in ABAP Guardian 0.5.0 or newer.
 
 1. In Eclipse, open **Help → Check for Updates**.
 2. Select the ABAP Guardian update and restart Eclipse.

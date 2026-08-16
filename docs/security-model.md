@@ -7,7 +7,6 @@
 | ai-gateway | Public HTTPS | No source retention; bearer-token authentication, request/rate limits and configurable analysis limits. |
 | analyzer-core | subprocess | Source via stdin only; JSON out; no network access. |
 | Eclipse plug-in | IDE | Read-only analysis; edits only after explicit confirmation; single-undo; never saves/activates; secure storage for any credentials. |
-| Hosted LLM | Outbound HTTPS | Server-side API key, explicit opt-in, redacted bounded prompts, `store: false`, schema validation and timeouts. |
 | Ollama (optional) | localhost HTTP | Local development model; schema-validated JSON responses; timeouts. |
 | ABAP Expert RAG (optional) | Local Docker network | Loopback-only published ports, Chroma/PDF/Word retrieval, bounded prompts, NDJSON parsing, sanitized errors and timeouts. |
 | Dedicated GPU VM | Caddy on 80/443 only | Automatic TLS; Guardian API bearer token; separate Basic Auth for the optional browser chat; Ollama/Chroma remain private. |
@@ -23,8 +22,8 @@
   model are ignored unconditionally.
 - **Error hygiene.** Analyzer stderr is never propagated verbatim; error
   messages contain no source content.
-- **Server-side secrets.** `OPENAI_API_KEY` is supplied by the hosting secret
-  store and is never committed or distributed in the Eclipse plug-in.
+- **Server-side secrets.** `GUARDIAN_API_TOKEN` and the browser password are
+  supplied by RunPod Secrets and never committed or distributed with the plug-in.
 - **Client authentication.** Production Compose mounts
   `GUARDIAN_API_TOKEN_FILE` as a Docker secret. Every `/api/v1/*` request uses
   a constant-time bearer-token check; authentication fails closed when the
@@ -33,10 +32,9 @@
   can enforce a bounded per-client/token request rate. Organization-scale
   deployments should add centralized identity, audit and monitoring controls.
 
-The included public Render configuration is for a controlled proof of
-concept. It deliberately supports install-only clients but therefore spends
-the service owner's model quota. Production deployment requires identity,
-authorization, per-user quotas, abuse protection and organizational approval.
+The public RunPod proxy exposes only the bearer-authenticated Guardian API and
+the separately password-protected browser UI. Production use still requires
+organizational approval, token rotation, regional controls and monitoring.
 
 ## Eclipse plug-in hardening
 

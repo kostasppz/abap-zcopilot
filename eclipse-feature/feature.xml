@@ -2,13 +2,13 @@
 <feature
       id="com.abapguardian.eclipse.feature"
       label="ABAP Guardian"
-      version="0.4.0.qualifier"
+      version="0.5.0.qualifier"
       provider-name="ABAP Guardian Project">
 
    <description>
       AI-assisted static analysis and code review for SAP ABAP.
-      Deterministic performance, security and privacy rules with optional
-      hosted AI enhancement, docked Copilot chat, live findings, editor
+      Deterministic performance, security, S/4HANA compatibility, Clean ABAP
+      and privacy rules with private RunPod AI enhancement, docked Copilot chat, live findings, editor
       markers and preview-only corrections. The Eclipse user installs only
       this plug-in; analysis is provided by the configured HTTPS service.
    </description>

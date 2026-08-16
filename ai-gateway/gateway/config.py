@@ -1,7 +1,5 @@
-"""Gateway configuration.
+"""Gateway configuration for the private RunPod/Ollama deployment.
 
-Everything is local by default. External AI providers are disabled unless
-explicitly enabled, and even then requests pass through the redaction layer.
 Source code is never stored or logged.
 """
 
@@ -57,10 +55,8 @@ class Settings:
         default_factory=lambda: _int_env("MAX_REQUEST_BODY_BYTES", 1_048_576)
     )
 
-    # AI provider. "ollama" talks directly to a local Ollama server;
-    # "abap-agent" delegates to the user's local streaming RAG service;
-    # "openai" uses the hosted Responses API and additionally requires the
-    # explicit ALLOW_EXTERNAL_PROVIDERS opt-in below.
+    # AI provider. "ollama" talks directly to the private Ollama server;
+    # "abap-agent" delegates to the private streaming RAG service on RunPod.
     llm_provider: str = field(
         default_factory=lambda: os.environ.get("LLM_PROVIDER", "ollama").lower()
     )
@@ -83,24 +79,6 @@ class Settings:
         default_factory=lambda: os.environ.get("ABAP_AGENT_MODEL", "abap-expert")
     )
 
-    # Hosted OpenAI Responses API. The API key is server-side only and is
-    # never sent to or stored by the Eclipse plug-in.
-    openai_base_url: str = field(
-        default_factory=lambda: os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
-    )
-    openai_api_key: str = field(
-        default_factory=lambda: os.environ.get("OPENAI_API_KEY", "")
-    )
-    openai_model: str = field(
-        default_factory=lambda: os.environ.get("OPENAI_MODEL", "gpt-5.6")
-    )
-
-    # External providers are OFF by default; enabling requires an explicit
-    # opt-in AND redaction stays active.
-    allow_external_providers: bool = field(
-        default_factory=lambda: os.environ.get("ALLOW_EXTERNAL_PROVIDERS", "false").lower()
-        == "true"
-    )
     redaction_enabled: bool = field(
         default_factory=lambda: os.environ.get("REDACTION_ENABLED", "true").lower() != "false"
     )

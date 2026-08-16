@@ -7,7 +7,15 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator
 
 Severity = Literal["INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"]
-Category = Literal["PERFORMANCE", "SECURITY", "PRIVACY", "POLICY"]
+Category = Literal[
+    "PERFORMANCE",
+    "SECURITY",
+    "S4HANA",
+    "CLEAN_CODE",
+    "PRIVACY",
+    "POLICY",
+    "MAINTAINABILITY",
+]
 
 
 class Finding(BaseModel):
@@ -33,6 +41,7 @@ class AnalyzeRequest(BaseModel):
     objectName: str = "UNKNOWN"
     objectType: str = "PROG"
     useAi: bool = True
+    categories: list[Category] = Field(default_factory=list)
 
     @field_validator("source")
     @classmethod

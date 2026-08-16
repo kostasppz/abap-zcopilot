@@ -1,0 +1,17 @@
+# ABAP Guardian — SAP S/4HANA compatibility checks.
+rules:
+  S4_SIMPLIFIED_DATA_MODEL_TABLE:
+    enabled: true
+    severity: HIGH
+  S4_WITH_HEADER_LINE:
+    enabled: true
+    severity: MEDIUM
+  S4_OCCURS_DECLARATION:
+    enabled: true
+    severity: MEDIUM
+  S4_NATIVE_SQL:
+    enabled: true
+    severity: HIGH
+  S4_DATABASE_HINT:
+    enabled: true
+    severity: MEDIUM

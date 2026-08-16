@@ -171,6 +171,52 @@ class RuleCoverageMatrixTest {
                 """,
                 "AUTHORITY-CHECK OBJECT S_TCODE without sy-subrc handling");
 
+        // ---------- SAP S/4HANA compatibility ----------
+        row("S4_SIMPLIFIED_DATA_MODEL_TABLE",
+                "SELECT mblnr FROM mseg INTO TABLE lt_items WHERE matnr = lv_matnr.",
+                "SELECT mblnr FROM MSEG is discussed here");
+        row("S4_WITH_HEADER_LINE",
+                "DATA lt_items TYPE STANDARD TABLE OF mara WITH HEADER LINE.",
+                "DATA WITH HEADER LINE is obsolete");
+        row("S4_OCCURS_DECLARATION",
+                "DATA lt_items TYPE mara OCCURS 0.",
+                "DATA OCCURS 0 is obsolete");
+        row("S4_NATIVE_SQL",
+                "EXEC SQL.",
+                "EXEC SQL native access notes");
+        row("S4_DATABASE_HINT",
+                "SELECT matnr FROM mara INTO TABLE lt_mara %_HINTS HDB 'NO_CS_JOIN'.",
+                "SELECT with database HINTS is discussed here");
+
+        // ---------- Clean ABAP ----------
+        row("CLEAN_MOVE_STATEMENT",
+                "MOVE lv_source TO lv_target.",
+                "MOVE source TO target");
+        row("CLEAN_COMPUTE_STATEMENT",
+                "COMPUTE lv_total = lv_net + lv_tax.",
+                "COMPUTE total expression");
+        row("CLEAN_FORM_ROUTINE",
+                "FORM calculate_total.",
+                "FORM calculate_total ENDFORM");
+        row("CLEAN_CALL_METHOD_STATEMENT",
+                "CALL METHOD lo_service->execute.",
+                "CALL METHOD lo_service execute");
+        row("CLEAN_DEEP_NESTING", """
+                IF lv_a = abap_true.
+                  IF lv_b = abap_true.
+                    IF lv_c = abap_true.
+                      IF lv_d = abap_true.
+                        WRITE lv_d.
+                      ENDIF.
+                    ENDIF.
+                  ENDIF.
+                ENDIF.
+                """,
+                "IF IF IF IF ENDIF deeply nested");
+        row("CLEAN_BOOLEAN_LITERAL",
+                "IF lv_active = 'X'. WRITE lv_active. ENDIF.",
+                "IF flag equals X character literal");
+
         // ---------- Privacy ----------
         row("PRIV_PERSONAL_DATA_IN_LOG",
                 "CALL FUNCTION 'BAL_LOG_MSG_ADD' EXPORTING i_msg = ls_p-nachn.",

@@ -11,7 +11,6 @@ done
 export LLM_PROVIDER="abap-agent"
 export ABAP_AGENT_BASE_URL="http://127.0.0.1:8000"
 export ABAP_AGENT_MODEL="${CHAT_MODEL:-abap-expert}"
-export ALLOW_EXTERNAL_PROVIDERS="false"
 export REDACTION_ENABLED="true"
 export BUNDLED_KNOWLEDGE_PATH=""
 export REQUIRE_API_AUTH="true"

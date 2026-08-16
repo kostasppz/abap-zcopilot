@@ -38,9 +38,9 @@ public class GuardianPreferencePage extends FieldEditorPreferencePage implements
     public GuardianPreferencePage() {
         super(GRID);
         setPreferenceStore(new ScopedPreferenceStore(InstanceScope.INSTANCE, Activator.PLUGIN_ID));
-        setDescription("ABAP Guardian hosted analysis service settings. "
+        setDescription("ABAP Guardian RunPod analysis service settings. "
                 + "Deterministic analysis runs on the service; when AI is enabled, "
-                + "a redacted code snippet may be sent to its configured LLM provider.");
+                + "a redacted code snippet is processed by the private ABAP Expert model on RunPod.");
     }
 
     @Override

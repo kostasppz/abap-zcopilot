@@ -1,19 +1,18 @@
 # ABAP Guardian
 
 AI-assisted static analysis and code review for SAP ABAP — deterministic
-rules first, optional hosted AI second. Eclipse users install one plug-in;
-the analyzer and model integration run on a managed HTTPS service.
+rules first, private RunPod AI second. Eclipse users install one plug-in;
+the analyzer and ABAP Expert model run in the owner's authenticated RunPod Pod.
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 ## What it does
 
-ABAP Guardian analyzes ABAP source code for **performance**, **security**
-and **privacy** problems using 34 deterministic, tokenizer/statement-model
-based rules with accurate line and column positions. An optional AI gateway
-(FastAPI plus a hosted OpenAI Responses API model, direct local Ollama, or the
-local ABAP Expert Chroma RAG service) enriches findings with better
-explanations and suggested fixes.
+ABAP Guardian analyzes ABAP source code for **performance**, **security**,
+**SAP S/4HANA compatibility**, **Clean ABAP** and **privacy** problems using
+45 deterministic, tokenizer/statement-model based rules with accurate line
+and column positions. Its private RunPod gateway connects to ABAP Expert,
+Chroma and Ollama to enrich findings with explanations and suggested fixes.
 
 An Eclipse plug-in integrates the analysis into ABAP Development Tools with
 a docked Copilot chat, live/on-save findings, editor annotations, contextual
@@ -32,13 +31,13 @@ quick actions and compare-based fix previews with explicit confirmation.
 | Path | Description |
 | --- | --- |
 | `analyzer-core/` | Pure Java 21 rule engine (no Eclipse dependencies) with CLI. |
-| `ai-gateway/` | Python FastAPI gateway; hosted OpenAI or optional local Ollama. |
+| `ai-gateway/` | Python FastAPI gateway for the private ABAP Expert/Ollama service. |
 | `eclipse-plugin/` | Eclipse/ADT plug-in (public APIs only). |
 | `eclipse-feature/`, `eclipse-updatesite/` | Feature + p2 update site (Tycho). |
-| `rules/` | Default YAML rule configuration (performance, security, privacy, policy). |
+| `rules/` | YAML configuration for performance, security, S/4HANA, Clean ABAP, privacy and policy. |
 | `samples/` | Good and bad ABAP examples. |
 | `docs/` | Architecture, rule docs, privacy/security model, guides. |
-| `Dockerfile`, `render.yaml` | One-container hosted deployment configuration. |
+| `Dockerfile` | Base analyzer/gateway container used by private deployments. |
 | `deploy/gpu-vm/` | Authenticated HTTPS deployment for the existing Ollama/RAG stack. |
 | `deploy/runpod/` | Single-container RunPod image for Guardian, ABAP Expert and Ollama. |
 
@@ -79,11 +78,11 @@ remain available regardless of these switches.
 After installation and after every plug-in update, a Welcome/What's New view
 opens once with privacy information and shortcuts to Copilot and Settings.
 
-The plug-in is configured for `https://abap-zcopilot.onrender.com` by default.
-For a private GPU deployment, users replace it with the organization's
-Guardian HTTPS URL and securely store the deployment token in Preferences.
+The service URL is intentionally blank after installation because every
+RunPod Pod has its own ID. Enter `https://<POD_ID>-8001.proxy.runpod.net` and
+store `GUARDIAN_API_TOKEN` securely in the plug-in Preferences.
 
-## Recommended: dedicated GPU VM with the existing ABAP Expert
+## Alternative: dedicated GPU VM with the existing ABAP Expert
 
 The production Compose deployment runs Caddy, Guardian, the existing ABAP
 Expert Chroma service and Ollama on one NVIDIA GPU VM. Only HTTPS is public;
@@ -97,7 +96,7 @@ Follow the full tutorial from VM sizing and DNS through model loading,
 verification, Eclipse setup, updates, backups and token rotation:
 [`docs/dedicated-gpu-vm.md`](docs/dedicated-gpu-vm.md).
 
-### RunPod deployment
+## Recommended: RunPod deployment
 
 RunPod avoids the AWS EC2 GPU quota workflow and runs the stack in one custom
 Pod image. The agent source, knowledge, Chroma database and Ollama model data
@@ -106,32 +105,6 @@ port 8001, while the optional Agent browser UI is exposed through a separate
 password-protected Nginx proxy on port 8002. Follow the complete Docker Hub,
 RunPod, security, storage and Eclipse walkthrough in
 [`docs/runpod.md`](docs/runpod.md).
-
-## Alternative proof of concept: Render with hosted OpenAI
-
-The included Dockerfile builds the Java analyzer and Python gateway into one
-container. `render.yaml` configures a proof-of-concept Render deployment.
-
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/kostasppz/abap-zcopilot)
-
-1. Deploy the repository using the button above.
-2. Set the secret `OPENAI_API_KEY` in the service dashboard. Never commit it.
-3. Confirm `https://<service-host>/health` reports `status: "ok"`,
-   `analyzerAvailable: true` and `llmAvailable: true`.
-4. If Render assigns a different hostname, change
-   `GuardianPreferences.DEFAULT_SERVICE_URL`, publish a new plug-in release,
-   and let Eclipse users update once.
-
-The hosted integration uses the OpenAI Responses API with `store: false`,
-server-side credentials and the existing redaction layer. Chat retrieves
-relevant passages from the `docs/` and `rules/` content bundled in the Docker
-image; no external vector database is required. Override
-`OPENAI_MODEL` in the hosting environment when required.
-
-> **Proof-of-concept warning:** the Render blueprint does not configure an
-> end-user token and uses the project owner's model quota. Use it only for
-> controlled testing. The dedicated GPU VM deployment enables authentication
-> and rate limiting.
 
 ## Local development and self-hosting
 
@@ -146,7 +119,7 @@ Run the gateway locally with Ollama:
 ```bash
 cd ai-gateway
 pip install -e .
-export ANALYZER_JAR=../analyzer-core/target/analyzer-core-0.4.0-SNAPSHOT.jar
+export ANALYZER_JAR=../analyzer-core/target/analyzer-core-0.5.0-SNAPSHOT.jar
 uvicorn gateway.main:app --port 8000
 ```
 
@@ -169,7 +142,8 @@ The shortcut can be changed in *Window → Preferences → General → Keys*.
 
 ## Rules
 
-34 rules across three categories — 14 `PERF_*`, 11 `SEC_*`, 9 `PRIV_*` — all
+45 rules across five primary categories — 14 `PERF_*`, 11 `SEC_*`, 5 `S4_*`,
+6 `CLEAN_*` and 9 `PRIV_*` — all
 documented in [`docs/rules.md`](docs/rules.md) and configurable via YAML in
 [`rules/`](rules/). Highlights:
 
@@ -192,9 +166,9 @@ The `reason` is **mandatory** — suppressions without one are ignored.
 ## Privacy & security posture
 
 - **Explicit hosting boundary.** The ABAP document is sent over HTTPS to the
-  configured Guardian service for deterministic analysis. Only a bounded,
-  redacted snippet (up to 4000 characters) is sent onward when hosted AI
-  enhancement or context-aware Copilot chat is enabled.
+  authenticated Guardian API in the configured RunPod Pod. Only a bounded,
+  redacted snippet (up to 4000 characters) reaches the private ABAP Expert
+  model when AI enhancement or context-aware Copilot chat is enabled.
 - **No source retention.** The gateway never stores or logs ABAP source
   (tests enforce this); source is piped to the analyzer via stdin only.
 - **AI cannot lie about positions.** Line/column numbers come exclusively

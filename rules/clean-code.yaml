@@ -1,0 +1,20 @@
+# ABAP Guardian — Clean ABAP checks.
+rules:
+  CLEAN_MOVE_STATEMENT:
+    enabled: true
+    severity: LOW
+  CLEAN_COMPUTE_STATEMENT:
+    enabled: true
+    severity: LOW
+  CLEAN_FORM_ROUTINE:
+    enabled: true
+    severity: MEDIUM
+  CLEAN_CALL_METHOD_STATEMENT:
+    enabled: true
+    severity: LOW
+  CLEAN_DEEP_NESTING:
+    enabled: true
+    severity: MEDIUM
+  CLEAN_BOOLEAN_LITERAL:
+    enabled: true
+    severity: LOW

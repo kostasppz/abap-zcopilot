@@ -39,7 +39,10 @@ public class GatewayClient {
     }
 
     public GatewayClient(String baseUrl, int timeoutSeconds, String apiToken) {
-        this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+        String normalizedBaseUrl = baseUrl == null ? "" : baseUrl.trim();
+        this.baseUrl = normalizedBaseUrl.endsWith("/")
+                ? normalizedBaseUrl.substring(0, normalizedBaseUrl.length() - 1)
+                : normalizedBaseUrl;
         this.timeout = Duration.ofSeconds(timeoutSeconds);
         this.apiToken = apiToken == null ? "" : apiToken.trim();
         this.http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
@@ -47,12 +50,15 @@ public class GatewayClient {
 
     /** True when health and an authenticated API probe both answer with HTTP 200. */
     public boolean isHealthy() {
+        if (baseUrl.isBlank()) {
+            return false;
+        }
         try {
             if (sendProbe("/health") != 200) {
                 return false;
             }
             return sendProbe("/api/v1/models") == 200;
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException | InterruptedException | IllegalArgumentException e) {
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
@@ -69,11 +75,18 @@ public class GatewayClient {
 
     public GuardianAnalysisResult analyze(String source, String objectName, String objectType,
                                           boolean useAi) throws GatewayException {
+        return analyze(source, objectName, objectType, useAi, List.of());
+    }
+
+    public GuardianAnalysisResult analyze(String source, String objectName, String objectType,
+                                          boolean useAi, List<String> categories)
+            throws GatewayException {
         JsonLite.Obj payload = new JsonLite.Obj()
                 .put("source", source)
                 .put("objectName", objectName)
                 .put("objectType", objectType)
-                .put("useAi", useAi);
+                .put("useAi", useAi)
+                .put("categories", categories);
         JsonLite.Obj body = post("/api/v1/analyze", payload);
         return new GuardianAnalysisResult(
                 body.str("objectName", objectName),
@@ -115,6 +128,10 @@ public class GatewayClient {
     }
 
     private JsonLite.Obj post(String path, JsonLite.Obj payload) throws GatewayException {
+        if (baseUrl.isBlank()) {
+            throw new GatewayException(
+                    "Configure the RunPod API URL in ABAP Guardian Preferences first.");
+        }
         try {
             HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(baseUrl + path))
                     .timeout(timeout)
@@ -134,7 +151,7 @@ public class GatewayClient {
                 throw new GatewayException("Gateway returned HTTP " + response.statusCode());
             }
             return JsonLite.parseObject(response.body());
-        } catch (IOException e) {
+        } catch (IOException | IllegalArgumentException e) {
             throw new GatewayException("Cannot reach ABAP Guardian gateway at " + baseUrl, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

@@ -2,16 +2,15 @@
 
 ```mermaid
 flowchart LR
-    E["Eclipse plug-in"] -->|"HTTPS: ABAP source"| G["Hosted Guardian gateway"]
+    E["Eclipse plug-in"] -->|"HTTPS + bearer token"| G["RunPod Guardian gateway"]
     G -->|"stdin"| A["Java analyzer-core"]
-    G -->|"bounded redacted prompt"| L["Hosted LLM"]
+    G -->|"bounded redacted prompt"| L["Private ABAP Expert + Ollama"]
     G -->|"findings JSON"| E
 ```
 
-`Dockerfile` packages the gateway and Java analyzer into one service. Local
-development may select Ollama instead of the hosted LLM. It may also select
-the local ABAP Expert RAG provider, which delegates generation and retrieval
-to the user's Chroma/PDF/Word service while preserving Guardian's API.
+`deploy/runpod/Dockerfile` packages the gateway, Java analyzer and private
+ABAP Expert/Ollama runtime. Local development may select Ollama directly or
+the ABAP Expert RAG provider while preserving Guardian's API.
 
 ## analyzer-core (Java 21, zero Eclipse deps)
 
@@ -25,7 +24,7 @@ Pipeline: `AbapTokenizer` → `AbapParser` → `RuleEngine` → JSON.
   (colon) statements into separate statements sharing the prefix, and builds
   a block tree (LOOP/IF/CASE/TRY/CLASS/METHOD/…). SELECT…ENDSELECT loops are
   recognized by forward scan.
-- **Rules** — 34 deterministic rules implemented against the statement/block
+- **Rules** — 45 deterministic rules implemented against the statement/block
   model (never raw substring matching). Each returns `Finding` objects with
   all required fields and honest confidence values.
 - **Engine** — applies YAML configuration (enable/disable, severity
@@ -50,10 +49,8 @@ Invariants:
 3. No source is stored or logged; tests prove it.
 4. Limits are configurable via env: `MAX_SOURCE_LENGTH`, `AI_TIMEOUT_SECONDS`,
    `REQUEST_TIMEOUT_SECONDS`, `MAX_FINDINGS`, `MAX_TOKENS`.
-5. External providers remain off unless both `LLM_PROVIDER=openai` and
-   `ALLOW_EXTERNAL_PROVIDERS=true` are configured. Hosted Responses API calls
-   use a server-side key, set `store: false`, and receive prompts only after
-   `gateway/redaction.py` masks likely PII/credentials.
+5. Model calls use only private `ollama` or `abap-agent` providers. Prompts
+   reach them only after `gateway/redaction.py` masks likely PII/credentials.
 6. `KnowledgeProvider` protocol (`gateway/knowledge.py`) is the RAG seam.
    Hosted containers use `BundledKnowledgeProvider`, a dependency-free local
    lexical retriever over the repository's `docs/` and `rules/` files.
@@ -104,8 +101,8 @@ knowledge and the vector database.
 - Suggested fixes are previewed in a compare dialog and applied only after
   explicit confirmation, as one document replace (single undo). The plug-in
   never saves or activates objects.
-- The default proof-of-concept service URL is HTTPS and can be replaced with
-  an organization-owned deployment. Provider credentials stay on the server.
+- The service URL is intentionally blank until the user enters the private
+  RunPod HTTPS endpoint. Model services remain private inside the Pod.
 - The Guardian deployment token is stored in Eclipse Secure Storage and sent
   as an HTTPS `Authorization: Bearer` header. Test Connection checks both the
   public health endpoint and an authenticated API endpoint.

@@ -17,6 +17,7 @@ import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.handlers.HandlerUtil;
 
 import java.util.Optional;
+import java.util.List;
 
 /**
  * Analyzes the source of the active editor. Runs as a background Job and
@@ -40,6 +41,12 @@ public class AnalyzeCurrentHandler extends AbstractHandler {
 
     /** Runs a manual analysis for an editor and updates both view and markers. */
     public static void analyze(IWorkbenchWindow window, IEditorPart editor) {
+        analyze(window, editor, List.of());
+    }
+
+    /** Runs only the requested rule categories; an empty list means all checks. */
+    public static void analyze(IWorkbenchWindow window, IEditorPart editor,
+                               List<String> categories) {
         Optional<String> source = AdtEditorAdapter.getSource(editor);
         if (source.isEmpty()) {
             MessageDialog.openInformation(window.getShell(), "ABAP Guardian",
@@ -49,7 +56,7 @@ public class AnalyzeCurrentHandler extends AbstractHandler {
         String objectName = AdtEditorAdapter.getObjectName(editor);
         String objectType = AdtEditorAdapter.getObjectType(editor);
 
-        new AnalyzeJob(source.get(), objectName, objectType, result ->
+        new AnalyzeJob(source.get(), objectName, objectType, categories, result ->
                 Display.getDefault().asyncExec(() -> showInFindingsView(window, editor, result))
         ).schedule();
     }

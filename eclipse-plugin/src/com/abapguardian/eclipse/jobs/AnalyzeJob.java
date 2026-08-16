@@ -12,6 +12,7 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 
 import java.util.function.Consumer;
+import java.util.List;
 
 /**
  * Background job running one analysis via the gateway. The UI thread is
@@ -25,15 +26,31 @@ public class AnalyzeJob extends Job {
     private final Consumer<GuardianAnalysisResult> onSuccess;
     private final Consumer<String> onFailure;
     private final boolean useAi;
+    private final List<String> categories;
 
     public AnalyzeJob(String source, String objectName, String objectType,
                       Consumer<GuardianAnalysisResult> onSuccess) {
         this(source, objectName, objectType, GuardianPreferences.isUseAi(), true,
-                onSuccess, message -> { });
+                List.of(), onSuccess, message -> { });
+    }
+
+    public AnalyzeJob(String source, String objectName, String objectType,
+                      List<String> categories,
+                      Consumer<GuardianAnalysisResult> onSuccess) {
+        this(source, objectName, objectType, GuardianPreferences.isUseAi(), true,
+                categories, onSuccess, message -> { });
     }
 
     public AnalyzeJob(String source, String objectName, String objectType,
                       boolean useAi, boolean userInitiated,
+                      Consumer<GuardianAnalysisResult> onSuccess,
+                      Consumer<String> onFailure) {
+        this(source, objectName, objectType, useAi, userInitiated, List.of(),
+                onSuccess, onFailure);
+    }
+
+    public AnalyzeJob(String source, String objectName, String objectType,
+                      boolean useAi, boolean userInitiated, List<String> categories,
                       Consumer<GuardianAnalysisResult> onSuccess,
                       Consumer<String> onFailure) {
         super("ABAP Guardian: analyzing " + objectName);
@@ -41,6 +58,7 @@ public class AnalyzeJob extends Job {
         this.objectName = objectName;
         this.objectType = objectType;
         this.useAi = useAi;
+        this.categories = List.copyOf(categories);
         this.onSuccess = onSuccess;
         this.onFailure = onFailure;
         setUser(userInitiated);
@@ -55,7 +73,7 @@ public class AnalyzeJob extends Job {
         try {
             GatewayClient client = new GatewayClient();
             GuardianAnalysisResult result = client.analyze(
-                    source, objectName, objectType, useAi);
+                    source, objectName, objectType, useAi, categories);
             if (monitor.isCanceled()) {
                 return Status.CANCEL_STATUS;
             }

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from unittest.mock import patch
 
 import respx
@@ -100,43 +99,28 @@ def test_max_findings_limit(client, sample_finding):
     assert len(resp.json()["findings"]) == settings.max_findings
 
 
-@respx.mock
-def test_hosted_openai_enhances_without_local_ollama(client, deterministic_result):
-    route = respx.post("https://api.openai.com/v1/responses").mock(
-        return_value=Response(
-            200,
-            json={
-                "output": [
-                    {
-                        "type": "message",
-                        "content": [
-                            {
-                                "type": "output_text",
-                                "text": (
-                                    '[{"ruleId":"PERF_SELECT_IN_LOOP",'
-                                    '"explanation":"Hosted explanation",'
-                                    '"recommendation":"Read once",'
-                                    '"suggestedCode":null}]'
-                                ),
-                            }
-                        ],
-                    }
-                ]
-            },
+def test_analyze_filters_requested_categories(client, sample_finding):
+    security_finding = dict(sample_finding)
+    security_finding["ruleId"] = "SEC_HARDCODED_PASSWORD"
+    security_finding["category"] = "SECURITY"
+    deterministic = {
+        "objectName": "ZTEST",
+        "objectType": "PROG",
+        "findings": [sample_finding, security_finding],
+        "suppressedFindings": [],
+    }
+    with patch("gateway.analyzer.run_deterministic_analysis", return_value=deterministic):
+        resp = client.post(
+            "/api/v1/analyze",
+            json={"source": ABAP, "useAi": False, "categories": ["SECURITY"]},
         )
-    )
-    with patch.object(settings, "llm_provider", "openai"), \
-         patch.object(settings, "allow_external_providers", True), \
-         patch.object(settings, "openai_api_key", "server-secret"), \
-         patch.object(settings, "openai_base_url", "https://api.openai.com/v1"), \
-         patch("gateway.analyzer.run_deterministic_analysis", return_value=deterministic_result):
-        resp = client.post("/api/v1/analyze", json={"source": ABAP, "useAi": True})
-
     assert resp.status_code == 200
-    body = resp.json()
-    assert body["aiEnhanced"] is True
-    assert body["findings"][0]["explanation"] == "Hosted explanation"
-    assert body["findings"][0]["startLine"] == 3
-    request = route.calls[0].request
-    assert request.headers["Authorization"] == "Bearer server-secret"
-    assert json.loads(request.content)["store"] is False
+    assert [item["category"] for item in resp.json()["findings"]] == ["SECURITY"]
+
+
+def test_analyze_rejects_unknown_category(client):
+    resp = client.post(
+        "/api/v1/analyze",
+        json={"source": ABAP, "categories": ["NOT_A_CATEGORY"]},
+    )
+    assert resp.status_code == 422

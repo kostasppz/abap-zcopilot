@@ -7,7 +7,7 @@ Set `ANALYZER_JAR` to the built jar and ensure `java` is on PATH:
 
 ```bash
 mvn -pl analyzer-core clean package
-export ANALYZER_JAR=$PWD/analyzer-core/target/analyzer-core-0.5.0-SNAPSHOT.jar
+export ANALYZER_JAR=$PWD/analyzer-core/target/analyzer-core-0.5.1-SNAPSHOT.jar
 ```
 
 **`/analyze` returns 503**
@@ -56,6 +56,11 @@ WRITE lv_pernr. "#EC ABAP_GUARDIAN: PRIV_UNMASKED_PERSONNEL_NUMBER reason="appro
 Verify the Pod is running and use
 `https://<POD_ID>-8001.proxy.runpod.net` in *ABAP Guardian → Configure*.
 Store the matching `GUARDIAN_API_TOKEN`, then use *Test Connection*.
+
+**The API token disappears or the Preferences buttons appear inactive**
+Update ABAP Guardian to `0.5.1` or newer. The plug-in now flushes encrypted
+credentials to Eclipse Secure Storage immediately, displays a confirmation or
+an Error Log reference, and runs *Test Connection* as a visible background job.
 
 **No findings view opens**
 *Window → Show View → Other… → ABAP Guardian → Guardian Findings.*

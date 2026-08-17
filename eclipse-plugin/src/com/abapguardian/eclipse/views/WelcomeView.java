@@ -40,12 +40,12 @@ public class WelcomeView extends ViewPart {
         Label whatsNew = new Label(parent, SWT.WRAP);
         whatsNew.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
         whatsNew.setText(
-                "What's new in 0.5.0\n\n"
-                + "• SAP S/4HANA compatibility checks and migration suggestions\n"
-                + "• ABAP Clean Code checks and modernization suggestions\n"
-                + "• Separate Performance, Security, S/4HANA and Clean Code commands\n"
-                + "• Private RunPod ABAP Expert integration\n"
-                + "• Welcome page now opens once per installed version");
+                "What's new in 0.5.1\n\n"
+                + "• API tokens are flushed to Eclipse Secure Storage immediately\n"
+                + "• Secure-storage success and failure messages are always visible\n"
+                + "• Test Connection now runs in the background with progress feedback\n"
+                + "• Connection failures identify URL, authentication and HTTP errors\n"
+                + "• Includes the S/4HANA and Clean ABAP analysis introduced in 0.5.0");
 
         Composite actions = new Composite(parent, SWT.NONE);
         actions.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));

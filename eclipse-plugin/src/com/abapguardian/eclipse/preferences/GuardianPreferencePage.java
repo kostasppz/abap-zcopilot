@@ -4,6 +4,12 @@ import com.abapguardian.eclipse.Activator;
 import com.abapguardian.eclipse.service.GatewayClient;
 import com.abapguardian.eclipse.security.SecureCredentialStore;
 
+import java.io.IOException;
+
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.preference.BooleanFieldEditor;
 import org.eclipse.jface.preference.ComboFieldEditor;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
@@ -34,6 +40,9 @@ public class GuardianPreferencePage extends FieldEditorPreferencePage implements
     private Text apiTokenText;
     private StringFieldEditor serviceUrlEditor;
     private IntegerFieldEditor timeoutEditor;
+    private Button testButton;
+    private Label connectionStatus;
+    private Job connectionTestJob;
 
     public GuardianPreferencePage() {
         super(GRID);
@@ -79,29 +88,11 @@ public class GuardianPreferencePage extends FieldEditorPreferencePage implements
                         {"Critical", "CRITICAL"}},
                 getFieldEditorParent()));
 
-        createApiTokenControls(getFieldEditorParent());
-
-        Button testButton = new Button(getFieldEditorParent(), SWT.PUSH);
-        testButton.setText("Test Connection");
-        testButton.addListener(SWT.Selection, event -> {
-            if (!saveApiToken(false)) {
-                return;
-            }
-            boolean healthy = new GatewayClient(
-                    serviceUrlEditor.getStringValue(),
-                    timeoutEditor.getIntValue(),
-                    apiTokenText.getText()).isHealthy();
-            MessageBox box = new MessageBox(getShell(),
-                    (healthy ? SWT.ICON_INFORMATION : SWT.ICON_ERROR) | SWT.OK);
-            box.setText("ABAP Guardian");
-            box.setMessage(healthy
-                    ? "ABAP Guardian is reachable and the API token is accepted."
-                    : "Connection failed. Check the service URL, API token and deployment status.");
-            box.open();
-        });
+        boolean tokenLoaded = createApiTokenControls(getFieldEditorParent());
+        createConnectionTestControls(getFieldEditorParent(), tokenLoaded);
     }
 
-    private void createApiTokenControls(Composite parent) {
+    private boolean createApiTokenControls(Composite parent) {
         Composite row = new Composite(parent, SWT.NONE);
         GridData rowData = new GridData(SWT.FILL, SWT.CENTER, true, false);
         rowData.horizontalSpan = 2;
@@ -113,7 +104,8 @@ public class GuardianPreferencePage extends FieldEditorPreferencePage implements
 
         apiTokenText = new Text(row, SWT.BORDER | SWT.PASSWORD);
         apiTokenText.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-        credentialStore.getGuardianApiToken().ifPresent(apiTokenText::setText);
+        var storedToken = credentialStore.getGuardianApiToken();
+        storedToken.ifPresent(apiTokenText::setText);
 
         Button save = new Button(row, SWT.PUSH);
         save.setText("Store securely");
@@ -121,35 +113,145 @@ public class GuardianPreferencePage extends FieldEditorPreferencePage implements
 
         Button clear = new Button(row, SWT.PUSH);
         clear.setText("Clear");
-        clear.addListener(SWT.Selection, event -> {
+        clear.addListener(SWT.Selection, event -> clearApiToken());
+        return storedToken.isPresent();
+    }
+
+    private void createConnectionTestControls(Composite parent, boolean tokenLoaded) {
+        Composite row = new Composite(parent, SWT.NONE);
+        GridData rowData = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        rowData.horizontalSpan = 2;
+        row.setLayoutData(rowData);
+        row.setLayout(new GridLayout(2, false));
+
+        testButton = new Button(row, SWT.PUSH);
+        testButton.setText("Test Connection");
+        testButton.addListener(SWT.Selection, event -> testConnectionAsync());
+
+        connectionStatus = new Label(row, SWT.WRAP);
+        connectionStatus.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        connectionStatus.setText(tokenLoaded
+                ? "Stored API token loaded from Eclipse Secure Storage."
+                : "No API token is stored yet.");
+    }
+
+    private void clearApiToken() {
+        try {
             credentialStore.remove(SecureCredentialStore.KEY_GUARDIAN_API_TOKEN);
             apiTokenText.setText("");
-        });
+            showStatus("The stored API token was removed.");
+            setErrorMessage(null);
+        } catch (IOException | RuntimeException exception) {
+            showStorageError("remove", exception);
+        }
     }
 
     private boolean saveApiToken(boolean showConfirmation) {
         try {
             credentialStore.putGuardianApiToken(apiTokenText.getText());
+            String message = apiTokenText.getText().isBlank()
+                    ? "The stored API token was removed."
+                    : "The API token was encrypted and stored successfully.";
+            showStatus(message);
+            setErrorMessage(null);
             if (showConfirmation) {
                 MessageBox box = new MessageBox(getShell(), SWT.ICON_INFORMATION | SWT.OK);
                 box.setText("ABAP Guardian");
-                box.setMessage(apiTokenText.getText().isBlank()
-                        ? "The stored API token was removed."
-                        : "The API token was stored in Eclipse Secure Storage.");
+                box.setMessage(message);
                 box.open();
             }
             return true;
-        } catch (org.eclipse.equinox.security.storage.StorageException exception) {
-            MessageBox box = new MessageBox(getShell(), SWT.ICON_ERROR | SWT.OK);
-            box.setText("ABAP Guardian");
-            box.setMessage("Eclipse Secure Storage could not save the API token.");
-            box.open();
+        } catch (org.eclipse.equinox.security.storage.StorageException
+                | IOException | RuntimeException exception) {
+            showStorageError("save", exception);
             return false;
+        }
+    }
+
+    private void showStorageError(String operation, Throwable exception) {
+        Activator.logError("Cannot " + operation + " Guardian API token in Eclipse Secure Storage",
+                exception);
+        String message = "Eclipse Secure Storage could not " + operation
+                + " the API token. Open Window > Show View > Error Log for details.";
+        showStatus(message);
+        setErrorMessage(message);
+        MessageBox box = new MessageBox(getShell(), SWT.ICON_ERROR | SWT.OK);
+        box.setText("ABAP Guardian");
+        box.setMessage(message);
+        box.open();
+    }
+
+    private void testConnectionAsync() {
+        if (!saveApiToken(false)) {
+            return;
+        }
+
+        String serviceUrl = serviceUrlEditor.getStringValue();
+        int timeoutSeconds = timeoutEditor.getIntValue();
+        String apiToken = apiTokenText.getText();
+        var display = testButton.getDisplay();
+
+        testButton.setEnabled(false);
+        testButton.setText("Testing...");
+        showStatus("Testing the Guardian health and authenticated model endpoints...");
+        setErrorMessage(null);
+
+        connectionTestJob = new Job("Test ABAP Guardian connection") {
+            @Override
+            protected IStatus run(IProgressMonitor monitor) {
+                GatewayClient.ConnectionTestResult result;
+                try {
+                    result = new GatewayClient(serviceUrl, timeoutSeconds, apiToken)
+                            .testConnection();
+                } catch (RuntimeException exception) {
+                    Activator.logError("Unexpected ABAP Guardian connection-test failure", exception);
+                    result = GatewayClient.ConnectionTestResult.failed(
+                            "The connection test failed unexpectedly. Open the Eclipse Error Log for details.");
+                }
+
+                GatewayClient.ConnectionTestResult completedResult = result;
+                display.asyncExec(() -> showConnectionTestResult(completedResult));
+                return Status.OK_STATUS;
+            }
+        };
+        connectionTestJob.setUser(true);
+        connectionTestJob.schedule();
+    }
+
+    private void showConnectionTestResult(GatewayClient.ConnectionTestResult result) {
+        if (testButton == null || testButton.isDisposed()) {
+            return;
+        }
+        testButton.setEnabled(true);
+        testButton.setText("Test Connection");
+        connectionTestJob = null;
+        showStatus(result.message());
+        setErrorMessage(result.healthy() ? null : result.message());
+
+        MessageBox box = new MessageBox(getShell(),
+                (result.healthy() ? SWT.ICON_INFORMATION : SWT.ICON_ERROR) | SWT.OK);
+        box.setText("ABAP Guardian Connection Test");
+        box.setMessage(result.message());
+        box.open();
+    }
+
+    private void showStatus(String message) {
+        if (connectionStatus != null && !connectionStatus.isDisposed()) {
+            connectionStatus.setText(message);
+            connectionStatus.getParent().layout(true, true);
         }
     }
 
     @Override
     public boolean performOk() {
         return saveApiToken(false) && super.performOk();
+    }
+
+    @Override
+    public void dispose() {
+        if (connectionTestJob != null) {
+            connectionTestJob.cancel();
+        }
+        super.dispose();
     }
 }

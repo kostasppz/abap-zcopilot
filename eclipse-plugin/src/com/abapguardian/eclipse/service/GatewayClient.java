@@ -50,19 +50,46 @@ public class GatewayClient {
 
     /** True when health and an authenticated API probe both answer with HTTP 200. */
     public boolean isHealthy() {
+        return testConnection().healthy();
+    }
+
+    /**
+     * Tests both the public health route and an authenticated route and returns
+     * a user-facing result that is safe to show in Eclipse Preferences.
+     */
+    public ConnectionTestResult testConnection() {
         if (baseUrl.isBlank()) {
-            return false;
+            return ConnectionTestResult.failed("Enter the RunPod Guardian service URL first.");
+        }
+        if (apiToken.isBlank()) {
+            return ConnectionTestResult.failed("Enter and securely store the Guardian API token first.");
         }
         try {
-            if (sendProbe("/health") != 200) {
-                return false;
+            int healthStatus = sendProbe("/health");
+            if (healthStatus != 200) {
+                return ConnectionTestResult.failed(
+                        "Guardian /health returned HTTP " + healthStatus + ".");
             }
-            return sendProbe("/api/v1/models") == 200;
-        } catch (IOException | InterruptedException | IllegalArgumentException e) {
-            if (e instanceof InterruptedException) {
-                Thread.currentThread().interrupt();
+            int modelsStatus = sendProbe("/api/v1/models");
+            if (modelsStatus == 401 || modelsStatus == 403) {
+                return ConnectionTestResult.failed(
+                        "Guardian is reachable, but the API token was rejected (HTTP "
+                                + modelsStatus + ").");
             }
-            return false;
+            if (modelsStatus != 200) {
+                return ConnectionTestResult.failed(
+                        "Guardian /api/v1/models returned HTTP " + modelsStatus + ".");
+            }
+            return ConnectionTestResult.success(
+                    "ABAP Guardian is reachable and the API token is accepted.");
+        } catch (IllegalArgumentException e) {
+            return ConnectionTestResult.failed("The Guardian service URL is not valid.");
+        } catch (IOException e) {
+            return ConnectionTestResult.failed(
+                    "Cannot reach ABAP Guardian. Check the RunPod Pod and service URL.");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return ConnectionTestResult.failed("The connection test was cancelled.");
         }
     }
 
@@ -162,6 +189,18 @@ public class GatewayClient {
     private void addAuthentication(HttpRequest.Builder builder) {
         if (!apiToken.isBlank()) {
             builder.header("Authorization", "Bearer " + apiToken);
+        }
+    }
+
+    /** Result returned by the Preferences connection test. */
+    public record ConnectionTestResult(boolean healthy, String message) {
+
+        public static ConnectionTestResult success(String message) {
+            return new ConnectionTestResult(true, message);
+        }
+
+        public static ConnectionTestResult failed(String message) {
+            return new ConnectionTestResult(false, message);
         }
     }
 

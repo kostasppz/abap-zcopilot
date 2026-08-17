@@ -90,7 +90,7 @@ You need:
 1. A RunPod account with a payment method or prepaid credit.
 2. A Docker Hub account and a private repository.
 3. Docker Desktop running on Windows.
-4. The prepared ABAP Guardian `0.5.0` source tree on Windows.
+4. The prepared ABAP Guardian `0.5.1` source tree on Windows.
 5. The private local `abap-agent` folder containing:
    - `agent.py`;
    - `Dockerfile` and/or `requirements.txt`;
@@ -102,9 +102,9 @@ You need:
 6. Eclipse with ABAP Development Tools.
 7. An approved password manager for tokens.
 
-The secure deployment requires ABAP Guardian `0.5.0` or newer. If the Eclipse
+The secure deployment requires ABAP Guardian `0.5.1` or newer. If the Eclipse
 Preferences page does not contain an **API token** field, update/publish the
-prepared `0.5.0` plug-in before connecting it to RunPod.
+prepared `0.5.1` plug-in before connecting it to RunPod.
 
 Throughout this guide, replace these placeholders:
 
@@ -1078,7 +1078,7 @@ session is required. Never expose Agent's internal port `8000` or Ollama port
 ### Existing installation
 
 1. Choose **Help → Check for Updates**.
-2. Install ABAP Guardian `0.5.0` or newer.
+2. Install ABAP Guardian `0.5.1` or newer.
 3. Restart Eclipse.
 4. Open **Window → Preferences → ABAP Guardian**.
 5. Confirm that an **API token** field is present.
@@ -1103,7 +1103,9 @@ Do not append `/api`, `/api/v1`, `:8000` or `:11434` to the URL.
 
 Select **Test Connection**. The expected result is that Guardian is reachable
 and the token is accepted. Eclipse stores the token in Eclipse Secure Storage,
-not ordinary workspace preferences.
+not ordinary workspace preferences. Version `0.5.1` confirms secure-storage
+writes immediately and performs the connection test in a background job with
+visible progress and a specific URL, authentication or HTTP result.
 
 ## 22. Use ABAP Guardian in Eclipse
 

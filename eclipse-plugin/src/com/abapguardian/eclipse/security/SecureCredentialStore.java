@@ -4,6 +4,7 @@ import org.eclipse.equinox.security.storage.ISecurePreferences;
 import org.eclipse.equinox.security.storage.SecurePreferencesFactory;
 import org.eclipse.equinox.security.storage.StorageException;
 
+import java.io.IOException;
 import java.util.Optional;
 
 /**
@@ -37,19 +38,21 @@ public class SecureCredentialStore {
         }
     }
 
-    public void put(String key, String value) throws StorageException {
+    public void put(String key, String value) throws StorageException, IOException {
         node.put(key, value, true); // encrypted
+        node.flush();
     }
 
-    public void remove(String key) {
+    public void remove(String key) throws IOException {
         node.remove(key);
+        node.flush();
     }
 
     public Optional<String> getGuardianApiToken() {
         return get(KEY_GUARDIAN_API_TOKEN).filter(value -> !value.isBlank());
     }
 
-    public void putGuardianApiToken(String value) throws StorageException {
+    public void putGuardianApiToken(String value) throws StorageException, IOException {
         if (value == null || value.isBlank()) {
             remove(KEY_GUARDIAN_API_TOKEN);
         } else {

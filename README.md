@@ -119,7 +119,7 @@ Run the gateway locally with Ollama:
 ```bash
 cd ai-gateway
 pip install -e .
-export ANALYZER_JAR=../analyzer-core/target/analyzer-core-0.5.0-SNAPSHOT.jar
+export ANALYZER_JAR=../analyzer-core/target/analyzer-core-0.5.1-SNAPSHOT.jar
 uvicorn gateway.main:app --port 8000
 ```
 

@@ -2,7 +2,7 @@
 <feature
       id="com.abapguardian.eclipse.feature"
       label="ABAP Guardian"
-      version="0.5.0.qualifier"
+      version="0.5.1.qualifier"
       provider-name="ABAP Guardian Project">
 
    <description>

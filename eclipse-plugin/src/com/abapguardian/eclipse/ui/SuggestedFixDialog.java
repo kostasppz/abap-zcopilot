@@ -38,6 +38,12 @@ public final class SuggestedFixDialog {
      * @return true when the edit was applied.
      */
     public static boolean proposeFix(Shell shell, IEditorPart editor, GuardianFinding finding) {
+        return proposeFix(shell, editor, finding, "");
+    }
+
+    /** Presents a generated fix and its model caveats for explicit review. */
+    public static boolean proposeFix(Shell shell, IEditorPart editor, GuardianFinding finding,
+                                     String caveats) {
         if (finding.getSuggestedCode() == null || finding.getSuggestedCode().isBlank()) {
             MessageDialog.openInformation(shell, "ABAP Guardian",
                     "This finding has no suggested code.");
@@ -66,7 +72,7 @@ public final class SuggestedFixDialog {
         }
 
         return previewAndApply(shell, document, offset, length, original,
-                finding.getSuggestedCode(), finding.getRuleId());
+                finding.getSuggestedCode(), finding.getRuleId(), caveats);
     }
 
     /** Reviews a Copilot correction for the current selection before applying it. */
@@ -92,12 +98,13 @@ public final class SuggestedFixDialog {
             return false;
         }
         return previewAndApply(shell, document, offset, length, originalSelection,
-                suggestedCode, "Copilot selection");
+                suggestedCode, "Copilot selection", "");
     }
 
     private static boolean previewAndApply(Shell shell, IDocument document,
                                            int offset, int length, String original,
-                                           String suggestedCode, String label) {
+                                           String suggestedCode, String label,
+                                           String caveats) {
         CompareConfiguration config = new CompareConfiguration();
         config.setLeftLabel("Current code");
         config.setRightLabel("Suggested code (" + label + ")");
@@ -119,10 +126,14 @@ public final class SuggestedFixDialog {
         }
         org.eclipse.compare.CompareUI.openCompareDialog(input);
 
+        String caution = caveats == null || caveats.isBlank()
+                ? "" : "\n\nAI caveats:\n" + abbreviate(caveats, 600);
         boolean confirmed = MessageDialog.openConfirm(shell, "ABAP Guardian",
-                "Apply the reviewed suggestion?\n\n"
-                        + "The change is applied in the editor only — nothing is saved or "
-                        + "activated. You can undo it with a single Undo.");
+                "Apply the reviewed suggestion?"
+                        + caution
+                        + "\n\nThe change is applied in the editor only — nothing is saved or "
+                        + "activated. Validate syntax, ATC findings, and behavior before saving. "
+                        + "You can undo it with a single Undo.");
         if (!confirmed) {
             return false;
         }
@@ -135,6 +146,12 @@ public final class SuggestedFixDialog {
                     "The document changed; the fix was not applied.");
             return false;
         }
+    }
+
+    private static String abbreviate(String value, int maxLength) {
+        String normalized = value.strip();
+        return normalized.length() <= maxLength
+                ? normalized : normalized.substring(0, maxLength - 1) + "…";
     }
 
     private static final class TextElement implements ITypedElement, IStreamContentAccessor {

@@ -60,8 +60,15 @@ the active ABAP object or selected text and cites bundled repository knowledge.
 
 The Findings table keeps Severity, Category, Rule, Line, Confidence and Title,
 and also shows **Description** and **Suggestion**. Right-click a finding and
-choose **Review Suggested Fix…** for a side-by-side diff. Guardian never saves
-or activates the object, and applies a proposed edit only after confirmation.
+choose **Generate & Review Suggested Fix…**. Existing deterministic code opens
+immediately; otherwise Guardian requests replacement ABAP in a background job
+and then opens a side-by-side diff. Guardian never saves or activates the
+object, and applies a proposed edit only after confirmation.
+
+The four topic-only commands enforce their requested category in both the
+gateway and Eclipse client. This keeps results scoped correctly even while an
+older RunPod gateway image is being replaced. **Analyze Current Editor (All
+Checks)** remains the only command that intentionally combines every category.
 For a selected-code Copilot correction, use **Suggest correction**, then
 **Review last suggestion…**; only a fenced ABAP code block can enter the diff
 workflow, and the original selection must still match.

@@ -40,7 +40,7 @@ From the repository root:
 
 ```bash
 docker build --file deploy/runpod/Dockerfile \
-  --tag <DOCKER_USER>/abap-guardian-runpod:0.5.0-runpod1 .
+  --tag <DOCKER_USER>/abap-guardian-runpod:0.5.1-runpod1 .
 ```
 
 The RunPod image keeps Guardian on port 8001, ABAP Expert on private port 8000

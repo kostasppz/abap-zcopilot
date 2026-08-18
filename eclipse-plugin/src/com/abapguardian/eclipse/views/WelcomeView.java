@@ -41,6 +41,8 @@ public class WelcomeView extends ViewPart {
         whatsNew.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
         whatsNew.setText(
                 "What's new in 0.5.1\n\n"
+                + "• Topic-only commands now enforce Performance, Security, S/4HANA or Clean ABAP scope\n"
+                + "• Missing replacement code can be generated and reviewed directly from a finding\n"
                 + "• API tokens are flushed to Eclipse Secure Storage immediately\n"
                 + "• Secure-storage success and failure messages are always visible\n"
                 + "• Test Connection now runs in the background with progress feedback\n"

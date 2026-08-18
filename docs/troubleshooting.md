@@ -80,11 +80,19 @@ and automatic online-AI enhancement are separate switches.
 Re-run analysis after editing. Stale results are intentionally discarded; an
 annotation is never guessed when its deterministic line range is invalid.
 
-**Review Suggested Fix says no suggested code is available**
-The deterministic rule supplied a recommendation but no replacement block,
-and AI enhancement did not produce valid suggested code. Use **Suggest
-Correction** in Copilot and review the answer manually; Guardian never applies
-chat output automatically.
+**A topic-only analysis shows findings from every category**
+Update ABAP Guardian to `0.5.1` or newer. Topic-only analysis is now enforced
+by the gateway and again by Eclipse, so Performance, Security, S/4HANA and
+Clean ABAP commands cannot display unrelated categories even with an older
+gateway image. Updating the RunPod image is still recommended so both sides
+use the same release.
+
+**A finding has a recommendation but no suggested code**
+Right-click it and choose **Generate & Review Suggested Fix…**. Guardian sends
+only the affected source range to the configured private AI service, validates
+that replacement ABAP was returned, and opens a side-by-side review. It never
+saves or activates the object; validate syntax, ATC findings and behavior
+before saving. This action requires online AI and a valid Guardian API token.
 
 **Tycho build fails resolving the target platform**
 The build needs network access to `download.eclipse.org`. Behind a proxy,

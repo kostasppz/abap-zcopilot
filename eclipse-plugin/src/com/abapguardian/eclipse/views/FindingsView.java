@@ -3,6 +3,7 @@ package com.abapguardian.eclipse.views;
 import com.abapguardian.eclipse.adapter.AdtEditorAdapter;
 import com.abapguardian.eclipse.api.GuardianAnalysisResult;
 import com.abapguardian.eclipse.api.GuardianFinding;
+import com.abapguardian.eclipse.jobs.SuggestFixJob;
 
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ColumnLabelProvider;
@@ -12,6 +13,7 @@ import org.eclipse.jface.viewers.TableViewerColumn;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
@@ -35,6 +37,7 @@ public class FindingsView extends ViewPart {
 
     private TableViewer viewer;
     private final List<GuardianFinding> findings = new ArrayList<>();
+    private IEditorPart sourceEditor;
 
     @Override
     public void createPartControl(Composite parent) {
@@ -53,7 +56,9 @@ public class FindingsView extends ViewPart {
         addColumn("Description", 520, GuardianFinding::getExplanation);
         addColumn("Suggestion", 520, f ->
                 f.getSuggestedCode() != null && !f.getSuggestedCode().isBlank()
-                        ? f.getSuggestedCode() : f.getRecommendation());
+                        ? f.getSuggestedCode()
+                        : f.getRecommendation()
+                                + "  [Right-click → Generate & Review Suggested Fix…]");
 
         viewer.setInput(findings);
         viewer.addDoubleClickListener(event -> {
@@ -67,13 +72,13 @@ public class FindingsView extends ViewPart {
 
     private void createContextMenu() {
         MenuManager manager = new MenuManager();
-        manager.add(new Action("Review Suggested Fix…") {
+        manager.add(new Action("Generate & Review Suggested Fix…") {
             @Override
             public void run() {
                 GuardianFinding finding = selectedFinding();
-                IEditorPart editor = activeEditor();
+                IEditorPart editor = resultEditor();
                 if (finding != null && editor != null) {
-                    SuggestedFixDialog.proposeFix(getSite().getShell(), editor, finding);
+                    reviewOrGenerateFix(editor, finding);
                 }
             }
         });
@@ -96,9 +101,70 @@ public class FindingsView extends ViewPart {
         return selected instanceof GuardianFinding finding ? finding : null;
     }
 
-    private IEditorPart activeEditor() {
+    private IEditorPart resultEditor() {
         IWorkbenchPage page = getSite().getWorkbenchWindow().getActivePage();
+        if (sourceEditor != null && page != null
+                && page.findEditor(sourceEditor.getEditorInput()) == sourceEditor) {
+            return sourceEditor;
+        }
         return page == null ? null : page.getActiveEditor();
+    }
+
+    private void reviewOrGenerateFix(IEditorPart editor, GuardianFinding finding) {
+        if (finding.getSuggestedCode() != null && !finding.getSuggestedCode().isBlank()) {
+            SuggestedFixDialog.proposeFix(getSite().getShell(), editor, finding);
+            return;
+        }
+        String snippet = AdtEditorAdapter.getSourceSnippet(editor,
+                finding.getStartLine(), finding.getEndLine(), 0, 4000);
+        if (snippet.isBlank()) {
+            org.eclipse.jface.dialogs.MessageDialog.openInformation(getSite().getShell(),
+                    "ABAP Guardian",
+                    "The analyzed source is no longer available. Re-run the analysis first.");
+            return;
+        }
+        new SuggestFixJob(finding, snippet,
+                generated -> Display.getDefault().asyncExec(() -> {
+                    if (viewer == null || viewer.getControl().isDisposed()) {
+                        return;
+                    }
+                    if (!findings.contains(finding)) {
+                        return;
+                    }
+                    String currentSnippet = AdtEditorAdapter.getSourceSnippet(editor,
+                            finding.getStartLine(), finding.getEndLine(), 0, 4000);
+                    if (!snippet.equals(currentSnippet)) {
+                        org.eclipse.jface.dialogs.MessageDialog.openInformation(
+                                getSite().getShell(), "ABAP Guardian",
+                                "The source changed while the fix was generated. "
+                                        + "Re-run the analysis before applying it.");
+                        return;
+                    }
+                    GuardianFinding enriched = finding.withSuggestedCode(
+                            generated.suggestedCode(), generated.requiresHumanReview());
+                    if (!replaceFinding(finding, enriched)) {
+                        return;
+                    }
+                    SuggestedFixDialog.proposeFix(getSite().getShell(), editor, enriched,
+                            generated.caveats());
+                }),
+                message -> Display.getDefault().asyncExec(() -> {
+                    if (viewer != null && !viewer.getControl().isDisposed()) {
+                        org.eclipse.jface.dialogs.MessageDialog.openError(getSite().getShell(),
+                                "ABAP Guardian — Suggested Fix", message);
+                    }
+                })).schedule();
+    }
+
+    private boolean replaceFinding(GuardianFinding original, GuardianFinding replacement) {
+        int index = findings.indexOf(original);
+        if (index >= 0) {
+            findings.set(index, replacement);
+            viewer.refresh();
+            viewer.setSelection(new org.eclipse.jface.viewers.StructuredSelection(replacement), true);
+            return true;
+        }
+        return false;
     }
 
     private interface FindingText {
@@ -119,6 +185,12 @@ public class FindingsView extends ViewPart {
 
     /** Replaces the table content with the given analysis result. */
     public void showResult(GuardianAnalysisResult result) {
+        showResult(result, null);
+    }
+
+    /** Replaces the table and remembers the editor that produced the result. */
+    public void showResult(GuardianAnalysisResult result, IEditorPart editor) {
+        sourceEditor = editor;
         findings.clear();
         findings.addAll(result.getFindings());
         if (viewer != null && !viewer.getTable().isDisposed()) {
@@ -131,8 +203,9 @@ public class FindingsView extends ViewPart {
         if (page == null) {
             return;
         }
-        IEditorPart editor = page.getActiveEditor();
+        IEditorPart editor = resultEditor();
         if (editor != null) {
+            page.activate(editor);
             AdtEditorAdapter.revealLine(editor, finding.getStartLine());
         }
     }
@@ -142,5 +215,11 @@ public class FindingsView extends ViewPart {
         if (viewer != null) {
             viewer.getControl().setFocus();
         }
+    }
+
+    @Override
+    public void dispose() {
+        sourceEditor = null;
+        super.dispose();
     }
 }

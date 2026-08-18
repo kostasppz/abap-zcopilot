@@ -83,7 +83,7 @@ public class AnalyzeCurrentHandler extends AbstractHandler {
             }
             FindingsView view = (FindingsView) page.showView(FindingsView.ID, null,
                     activateView ? IWorkbenchPage.VIEW_ACTIVATE : IWorkbenchPage.VIEW_VISIBLE);
-            view.showResult(result);
+            view.showResult(result, editor);
             if (editor != null) {
                 AdtEditorAdapter.getDocument(editor).ifPresent(document ->
                         AdtEditorAdapter.getAnnotationModel(editor).ifPresent(model ->

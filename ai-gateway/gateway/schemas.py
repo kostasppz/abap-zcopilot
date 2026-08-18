@@ -76,7 +76,7 @@ class SuggestFixRequest(BaseModel):
 
 
 class SuggestFixResponse(BaseModel):
-    suggestedCode: str
+    suggestedCode: str = Field(min_length=1, max_length=20_000)
     caveats: str = ""
     model: str
     requiresHumanReview: bool = True

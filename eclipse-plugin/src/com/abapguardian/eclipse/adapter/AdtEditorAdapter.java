@@ -2,6 +2,7 @@ package com.abapguardian.eclipse.adapter;
 
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.ITextSelection;
+import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.source.IAnnotationModel;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
@@ -92,6 +93,31 @@ public final class AdtEditorAdapter {
             return selection.getLength();
         }
         return 0;
+    }
+
+    /**
+     * Returns a bounded source excerpt around a one-based finding range.
+     * The excerpt is used only for an explicit suggested-fix request and is
+     * never persisted by the plug-in.
+     */
+    public static String getSourceSnippet(IEditorPart editor, int startLine, int endLine,
+                                          int contextLines, int maxCharacters) {
+        IDocument document = getDocument(editor).orElse(null);
+        if (document == null || document.getNumberOfLines() == 0 || maxCharacters <= 0) {
+            return "";
+        }
+        int first = Math.max(0, startLine - 1 - Math.max(0, contextLines));
+        int last = Math.min(document.getNumberOfLines() - 1,
+                Math.max(first, endLine - 1 + Math.max(0, contextLines)));
+        try {
+            int offset = document.getLineOffset(first);
+            int endOffset = document.getLineOffset(last) + document.getLineLength(last);
+            String snippet = document.get(offset, endOffset - offset);
+            return snippet.length() <= maxCharacters
+                    ? snippet : snippet.substring(0, maxCharacters);
+        } catch (BadLocationException exception) {
+            return "";
+        }
     }
 
     /** Best-effort ABAP object name from the editor input. */

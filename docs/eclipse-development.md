@@ -57,13 +57,16 @@ ADT installation with PDE). Launch a runtime workbench with the plug-in via
   searching for **Analyze Current Editor**.
 - **Guardian Findings view** — columns Severity | Category | Rule | Line |
   Confidence | Title | Description | Suggestion; double-click navigates to the
-  finding and its context menu opens the compare-based fix review.
+  finding. **Generate & Review Suggested Fix…** either opens existing
+  deterministic code or requests replacement ABAP from `/api/v1/suggest-fix`
+  in a background job before opening the compare review.
 - **ABAP Guardian Copilot view** — stacked next to Problems in every
   perspective. Chat can use the active editor or current text selection as
   context; `Ctrl+Alt+C` opens it.
 - **Editor context menu** — Ask Guardian, Analyze Selection, Analyze Current
   Editor (all checks), category-only Performance/Security/S/4HANA/Clean Code,
-  Explain Selection and Suggest Correction.
+  Explain Selection and Suggest Correction. Category-only results are filtered
+  by the gateway and again by the Eclipse client for mixed-version deployments.
 - **Live analysis** — `LiveAnalysisController` attaches only to the active
   public `ITextEditor` document, debounces changes, cancels stale jobs and can
   analyze on save. Both triggers are opt-in; automatic AI is separately opt-in.

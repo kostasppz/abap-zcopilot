@@ -62,6 +62,37 @@ def test_suggest_fix_requires_valid_schema(client, sample_finding):
 
 
 @respx.mock
+def test_suggest_fix_rejects_blank_code(client, sample_finding):
+    respx.post(f"{settings.ollama_base_url}/api/generate").mock(
+        return_value=Response(
+            200,
+            json={"response": '{"suggestedCode": "  ", "caveats": "manual"}'},
+        )
+    )
+    resp = client.post(
+        "/api/v1/suggest-fix",
+        json={"finding": sample_finding, "sourceSnippet": "SELECT * FROM mara."},
+    )
+    assert resp.status_code == 502
+
+
+def test_suggest_fix_returns_existing_deterministic_code_without_ai(client, sample_finding):
+    finding = dict(sample_finding)
+    finding["suggestedCode"] = (
+        "```abap\nSELECT matnr FROM mara INTO TABLE @DATA(materials).\n```"
+    )
+    with patch("gateway.llm_client.generate_json") as generate_json:
+        resp = client.post(
+            "/api/v1/suggest-fix",
+            json={"finding": finding, "sourceSnippet": "SELECT * FROM mara."},
+        )
+    assert resp.status_code == 200
+    assert resp.json()["suggestedCode"].startswith("SELECT matnr")
+    assert resp.json()["model"] == "deterministic"
+    generate_json.assert_not_called()
+
+
+@respx.mock
 def test_suggest_fix_marks_human_review(client, sample_finding):
     respx.post(f"{settings.ollama_base_url}/api/generate").mock(
         return_value=Response(

@@ -68,4 +68,11 @@ public final class GuardianFinding {
                 endLine + offset, endColumn, recommendation, suggestedCode,
                 requiresHumanReview, documentationReferences);
     }
+
+    /** Returns this finding with generated replacement code attached. */
+    public GuardianFinding withSuggestedCode(String code, boolean humanReviewRequired) {
+        return new GuardianFinding(ruleId, category, severity, confidence, title,
+                explanation, evidence, startLine, startColumn, endLine, endColumn,
+                recommendation, code, humanReviewRequired, documentationReferences);
+    }
 }

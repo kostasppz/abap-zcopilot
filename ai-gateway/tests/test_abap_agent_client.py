@@ -82,3 +82,23 @@ def test_abap_agent_json_accepts_one_fenced_document():
     with patch.object(settings, "llm_provider", "abap-agent"):
         result = asyncio.run(llm_client.generate_json("Return JSON"))
     assert result["suggestedCode"] == "READ TABLE lt."
+
+
+def test_llm_client_extracts_json_surrounded_by_model_commentary():
+    response = (
+        "Here is the requested correction:\n"
+        '{"suggestedCode":"DATA(result) = value.","caveats":"Run ATC"}'
+        "\nPlease review it."
+    )
+    with patch.object(settings, "llm_provider", "abap-agent"), \
+         patch("gateway.llm_client.generate_text", return_value=response):
+        result = asyncio.run(llm_client.generate_json("prompt"))
+    assert result["suggestedCode"] == "DATA(result) = value."
+
+
+def test_llm_client_json_extractor_handles_braces_inside_strings():
+    response = 'answer: {"suggestedCode":"IF value = \\"{\\". ENDIF.","caveats":""} done'
+    with patch.object(settings, "llm_provider", "abap-agent"), \
+         patch("gateway.llm_client.generate_text", return_value=response):
+        result = asyncio.run(llm_client.generate_json("prompt"))
+    assert '"{"' in result["suggestedCode"]

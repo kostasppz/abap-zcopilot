@@ -631,14 +631,14 @@ docker build `
   --no-cache `
   --platform linux/amd64 `
   --file deploy/runpod/Dockerfile `
-  --tag <DOCKER_USER>/abap-guardian-runpod:0.5.0-runpod1 `
+  --tag <DOCKER_USER>/abap-guardian-runpod:0.5.1-runpod1 `
   .
 ```
 
 This must finish successfully. Then push the immutable version tag:
 
 ```powershell
-docker push <DOCKER_USER>/abap-guardian-runpod:0.5.0-runpod1
+docker push <DOCKER_USER>/abap-guardian-runpod:0.5.1-runpod1
 ```
 
 Do not rely on a floating `latest` tag for the production Pod. A versioned tag
@@ -733,8 +733,8 @@ Open **Templates → New Template** and configure:
 
 | Setting | Value |
 | --- | --- |
-| Name | `ABAP Guardian Ollama RAG 0.5.0` |
-| Container image | `<DOCKER_USER>/abap-guardian-runpod:0.5.0-runpod1` |
+| Name | `ABAP Guardian Ollama RAG 0.5.1` |
+| Container image | `<DOCKER_USER>/abap-guardian-runpod:0.5.1-runpod1` |
 | Registry credentials | `dockerhub-abap-guardian` |
 | Container disk | `20 GB` |
 | Volume mount path | `/workspace` |
@@ -769,7 +769,7 @@ Basic Authentication proxy.
 3. Select the `abap-guardian-data` network volume first.
 4. Select a compatible European data centre.
 5. Select one 24 GB GPU, preferably L4, A5000, RTX 3090 or RTX 4090.
-6. Select the private template `ABAP Guardian Ollama RAG 0.5.0`.
+6. Select the private template `ABAP Guardian Ollama RAG 0.5.1`.
 7. Enable SSH terminal access/public IP support.
 8. Confirm the hourly price.
 9. Choose **Deploy On-Demand**.
@@ -957,7 +957,7 @@ Expected properties:
   "analyzerAvailable": true,
   "authenticationRequired": true,
   "authenticationConfigured": true,
-  "version": "0.5.0"
+  "version": "0.5.1"
 }
 ```
 
@@ -1297,7 +1297,7 @@ curl -s http://127.0.0.1:8001/health | /opt/agent-venv/bin/python -m json.tool
 | `guardian` does not start | Agent health is unavailable or `GUARDIAN_API_TOKEN` was not injected. |
 | Nginx or `runpod-base` does not start | Verify `AGENT_WEB_PASSWORD` is injected from the RunPod secret and contains at least 24 characters. |
 | Agent website returns 401 | Use username `guardian` and the current `abap_agent_web_password`; remove stale credentials saved by the browser. |
-| Agent website returns Nginx 500 after login | Verify `/run/abap-guardian` is group-readable by `www-data`; use image tag `0.5.0-runpod1` or newer. |
+| Agent website returns Nginx 500 after login | Verify `/run/abap-guardian` is group-readable by `www-data`; use image tag `0.5.1-runpod1` or newer. |
 | `llmAvailable` is false | Verify both model names, Ollama logs and `/api/status`. |
 | Out of GPU memory | Use a smaller quantization/model or a 48 GB GPU. |
 | Public health returns 502 | Guardian is not listening on `0.0.0.0:8001`; check Supervisor and logs. |

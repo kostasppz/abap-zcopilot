@@ -15,7 +15,10 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 /**
  * HTTP client for the ABAP Guardian gateway. Uses the JDK HttpClient only
@@ -108,19 +111,100 @@ public class GatewayClient {
     public GuardianAnalysisResult analyze(String source, String objectName, String objectType,
                                           boolean useAi, List<String> categories)
             throws GatewayException {
+        List<String> requestedCategories = normalizeCategories(categories);
         JsonLite.Obj payload = new JsonLite.Obj()
                 .put("source", source)
                 .put("objectName", objectName)
                 .put("objectType", objectType)
                 .put("useAi", useAi)
-                .put("categories", categories);
+                .put("categories", requestedCategories);
         JsonLite.Obj body = post("/api/v1/analyze", payload);
+        List<GuardianFinding> findings = filterToCategories(
+                parseFindings(body.arr("findings")), requestedCategories);
+        List<GuardianFinding> suppressed = filterToCategories(
+                parseFindings(body.arr("suppressedFindings")), requestedCategories);
         return new GuardianAnalysisResult(
                 body.str("objectName", objectName),
                 body.str("objectType", objectType),
-                parseFindings(body.arr("findings")),
-                parseFindings(body.arr("suppressedFindings")),
+                findings,
+                suppressed,
                 body.bool("aiEnhanced", false));
+    }
+
+    /** Requests an on-demand code replacement for a finding without one. */
+    public SuggestedFixResult suggestFix(GuardianFinding finding, String sourceSnippet)
+            throws GatewayException {
+        JsonLite.Obj findingPayload = new JsonLite.Obj()
+                .put("ruleId", finding.getRuleId())
+                .put("category", finding.getCategory())
+                .put("severity", finding.getSeverity())
+                .put("confidence", finding.getConfidence())
+                .put("title", finding.getTitle())
+                .put("explanation", finding.getExplanation())
+                .put("evidence", finding.getEvidence())
+                .put("startLine", finding.getStartLine())
+                .put("startColumn", finding.getStartColumn())
+                .put("endLine", finding.getEndLine())
+                .put("endColumn", finding.getEndColumn())
+                .put("recommendation", finding.getRecommendation())
+                .put("suggestedCode", finding.getSuggestedCode())
+                .put("requiresHumanReview", finding.isRequiresHumanReview())
+                .put("documentationReferences", finding.getDocumentationReferences());
+        JsonLite.Obj payload = new JsonLite.Obj()
+                .put("finding", findingPayload)
+                .put("sourceSnippet", truncate(sourceSnippet, 4000));
+        JsonLite.Obj body = post("/api/v1/suggest-fix", payload);
+        String code = stripCodeFence(body.str("suggestedCode", ""));
+        if (code.isBlank()) {
+            throw new GatewayException(
+                    "The AI service did not return replacement ABAP code. Try again with more context.");
+        }
+        return new SuggestedFixResult(
+                code,
+                body.str("caveats", ""),
+                body.str("model", ""),
+                body.bool("requiresHumanReview", true));
+    }
+
+    private static List<String> normalizeCategories(List<String> categories) {
+        if (categories == null || categories.isEmpty()) {
+            return List.of();
+        }
+        Set<String> normalized = new LinkedHashSet<>();
+        for (String category : categories) {
+            if (category != null && !category.isBlank()) {
+                normalized.add(category.trim().toUpperCase(Locale.ROOT));
+            }
+        }
+        return List.copyOf(normalized);
+    }
+
+    /**
+     * Defense in depth for mixed deployments: older gateway images ignored
+     * the categories field, so Eclipse enforces the requested scope again.
+     */
+    private static List<GuardianFinding> filterToCategories(
+            List<GuardianFinding> findings, List<String> categories) {
+        if (categories.isEmpty()) {
+            return findings;
+        }
+        Set<String> selected = Set.copyOf(categories);
+        return findings.stream()
+                .filter(finding -> finding.getCategory() != null
+                        && selected.contains(finding.getCategory().toUpperCase(Locale.ROOT)))
+                .toList();
+    }
+
+    private static String stripCodeFence(String value) {
+        String code = value == null ? "" : value.strip();
+        if (!code.startsWith("```") || !code.endsWith("```")) {
+            return code;
+        }
+        int firstNewline = code.indexOf('\n');
+        if (firstNewline < 0) {
+            return "";
+        }
+        return code.substring(firstNewline + 1, code.length() - 3).strip();
     }
 
     public GuardianChatResponse chat(String question, String source, String selection,
@@ -168,14 +252,16 @@ public class GatewayClient {
             HttpRequest request = builder.build();
             HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200) {
-                if (response.statusCode() == 401) {
+                if (response.statusCode() == 401 || response.statusCode() == 403) {
                     throw new GatewayException(
                             "Guardian API token is missing or invalid. Update it in ABAP Guardian Preferences.");
                 }
                 if (response.statusCode() == 429) {
                     throw new GatewayException("Guardian request limit reached. Please wait and try again.");
                 }
-                throw new GatewayException("Gateway returned HTTP " + response.statusCode());
+                String detail = responseDetail(response.body());
+                throw new GatewayException("Gateway returned HTTP " + response.statusCode()
+                        + (detail.isBlank() ? "" : ": " + detail));
             }
             return JsonLite.parseObject(response.body());
         } catch (IOException | IllegalArgumentException e) {
@@ -192,6 +278,17 @@ public class GatewayClient {
         }
     }
 
+    private static String responseDetail(String responseBody) {
+        if (responseBody == null || responseBody.isBlank()) {
+            return "";
+        }
+        try {
+            return truncate(JsonLite.parseObject(responseBody).str("detail", ""), 300);
+        } catch (IllegalArgumentException exception) {
+            return "";
+        }
+    }
+
     /** Result returned by the Preferences connection test. */
     public record ConnectionTestResult(boolean healthy, String message) {
 
@@ -202,6 +299,11 @@ public class GatewayClient {
         public static ConnectionTestResult failed(String message) {
             return new ConnectionTestResult(false, message);
         }
+    }
+
+    /** Validated response from the on-demand suggested-fix endpoint. */
+    public record SuggestedFixResult(String suggestedCode, String caveats,
+                                     String model, boolean requiresHumanReview) {
     }
 
     private List<GuardianFinding> parseFindings(List<JsonLite.Obj> array) {

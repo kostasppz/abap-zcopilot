@@ -308,14 +308,21 @@ COPY deploy/runpod/start-guardian.sh /opt/runpod/start-guardian.sh
 COPY deploy/runpod/supervisord.conf /opt/runpod/supervisord.conf
 
 # The base image defines a port-8001 proxy directly in nginx.conf and does not
-# load conf.d. Guardian owns 8001, so move that unused proxy to loopback-only
-# port 18001 and load the authenticated Agent browser proxy on 8002.
+# load conf.d. It can also fall back to nobody:nogroup when no Nginx worker is
+# configured. Normalize the worker to www-data so the private password file
+# remains readable after every Pod restart.
 RUN rm -f /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*.conf
 COPY deploy/runpod/nginx-agent-web.conf /etc/nginx/conf.d/abap-agent-web.conf
 RUN sed -i 's/listen 8001;/listen 127.0.0.1:18001;/' /etc/nginx/nginx.conf \
     && sed -i '/^http {/a\    include /etc/nginx/conf.d/*.conf;' /etc/nginx/nginx.conf \
+    && if grep -Eq '^[[:space:]]*user[[:space:]]+' /etc/nginx/nginx.conf; then \
+         sed -Ei 's/^[[:space:]]*user[[:space:]]+[^;]+;/user www-data;/' /etc/nginx/nginx.conf; \
+       else \
+         sed -i '1i user www-data;' /etc/nginx/nginx.conf; \
+       fi \
     && grep -Fq 'listen 127.0.0.1:18001;' /etc/nginx/nginx.conf \
     && grep -Fq 'include /etc/nginx/conf.d/*.conf;' /etc/nginx/nginx.conf \
+    && grep -Eq '^user[[:space:]]+www-data;' /etc/nginx/nginx.conf \
     && ! grep -Eq 'listen[[:space:]]+8001;' /etc/nginx/nginx.conf \
     && install -d -o root -g www-data -m 0750 /run/abap-guardian \
     && install -o root -g www-data -m 0640 /dev/null /run/abap-guardian/agent-web.htpasswd \
@@ -1297,7 +1304,7 @@ curl -s http://127.0.0.1:8001/health | /opt/agent-venv/bin/python -m json.tool
 | `guardian` does not start | Agent health is unavailable or `GUARDIAN_API_TOKEN` was not injected. |
 | Nginx or `runpod-base` does not start | Verify `AGENT_WEB_PASSWORD` is injected from the RunPod secret and contains at least 24 characters. |
 | Agent website returns 401 | Use username `guardian` and the current `abap_agent_web_password`; remove stale credentials saved by the browser. |
-| Agent website returns Nginx 500 after login | Verify `/run/abap-guardian` is group-readable by `www-data`; use image tag `0.5.1-runpod1` or newer. |
+| Agent website returns Nginx 500 after login | Run `ps -eo user,group,cmd \| grep '[n]ginx'`. An old image may run workers as `nobody:nogroup` while the password file is `root:www-data`; use the temporary `nogroup` permission repair, then deploy image tag `0.5.1-runpod1` containing the permanent worker-user fix. |
 | `llmAvailable` is false | Verify both model names, Ollama logs and `/api/status`. |
 | Out of GPU memory | Use a smaller quantization/model or a 48 GB GPU. |
 | Public health returns 502 | Guardian is not listening on `0.0.0.0:8001`; check Supervisor and logs. |

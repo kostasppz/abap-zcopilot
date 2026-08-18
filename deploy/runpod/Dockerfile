@@ -63,14 +63,22 @@ COPY deploy/runpod/start-guardian.sh /opt/runpod/start-guardian.sh
 COPY deploy/runpod/supervisord.conf /opt/runpod/supervisord.conf
 
 # The RunPod base image defines its port-8001 proxy directly in nginx.conf and
-# does not load conf.d. Guardian owns 8001, so make the unused base proxy
-# loopback-only on 18001 and load the authenticated Agent proxy on 8002.
+# does not load conf.d. It also omits an explicit worker user in some releases,
+# which makes Nginx fall back to nobody:nogroup while the private password file
+# is owned by root:www-data. Normalize the worker identity before loading the
+# authenticated Agent proxy so credentials remain readable after every restart.
 RUN rm -f /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*.conf
 COPY deploy/runpod/nginx-agent-web.conf /etc/nginx/conf.d/abap-agent-web.conf
 RUN sed -i 's/listen 8001;/listen 127.0.0.1:18001;/' /etc/nginx/nginx.conf \
     && sed -i '/^http {/a\    include /etc/nginx/conf.d/*.conf;' /etc/nginx/nginx.conf \
+    && if grep -Eq '^[[:space:]]*user[[:space:]]+' /etc/nginx/nginx.conf; then \
+         sed -Ei 's/^[[:space:]]*user[[:space:]]+[^;]+;/user www-data;/' /etc/nginx/nginx.conf; \
+       else \
+         sed -i '1i user www-data;' /etc/nginx/nginx.conf; \
+       fi \
     && grep -Fq 'listen 127.0.0.1:18001;' /etc/nginx/nginx.conf \
     && grep -Fq 'include /etc/nginx/conf.d/*.conf;' /etc/nginx/nginx.conf \
+    && grep -Eq '^user[[:space:]]+www-data;' /etc/nginx/nginx.conf \
     && ! grep -Eq 'listen[[:space:]]+8001;' /etc/nginx/nginx.conf \
     && install -d -o root -g www-data -m 0750 /run/abap-guardian \
     && install -o root -g www-data -m 0640 /dev/null /run/abap-guardian/agent-web.htpasswd \
